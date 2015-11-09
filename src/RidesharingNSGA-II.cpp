@@ -36,6 +36,8 @@ Population* malloc_population(int pop_size){
 	return p1;
 }
 
+/*Configura o grafo do problema, com as distancias entre cada cidade,
+ * caronas e veículos disponíveis*/
 void config_problema_minimo(){
 	Grafo* g = new Grafo(8);
 	graph = g;
@@ -178,6 +180,8 @@ void config_problema_minimo(){
 	rider2->time_window[2] = rider2->ED + mt1->MTT;
 	rider2->time_window[3] = rider2->LA;
 }
+
+
 
 void config_nsga_ii(){
 	p = malloc_population(20);
