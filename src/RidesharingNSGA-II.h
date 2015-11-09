@@ -46,17 +46,17 @@ class Grafo{
 public:
 	nfo** matrix;
 	vertex* vertex_list;
-	int n;
+	int size;
 	//Constroi um grafo completo com n vértices
-	Grafo(int n_) : n(n_) {
-		matrix = (nfo**) malloc(sizeof(nfo*)*n);
-		for(int i=0; i< n; i++){
-			matrix[i] = (nfo*) malloc (sizeof(nfo)*n);
+	Grafo(int n_) : size(n_) {
+		matrix = (nfo**) malloc(sizeof(nfo*)*size);
+		for(int i=0; i< size; i++){
+			matrix[i] = (nfo*) malloc (sizeof(nfo)*size);
 		}
 
-		vertex_list = (vertex*) malloc(sizeof(vertex)*n);
+		vertex_list = (vertex*) malloc(sizeof(vertex)*size);
 
-		for (int i = 0; i < n; i++){
+		for (int i = 0; i < size; i++){
 			vertex_list[i].id = i;
 			vertex_list[i].AT = 0;
 			vertex_list[i].BT = 1.3;
@@ -72,7 +72,7 @@ public:
 
 	~Grafo(){
 		free(vertex_list);
-		for (int i = 0; i < n; i++){
+		for (int i = 0; i < size; i++){
 			free(matrix[i]);
 		}
 		free(matrix);
@@ -82,6 +82,7 @@ public:
 
 /**==================== NSGA-II ==============================================**/
 
+
 typedef struct ind{
 	float vehicle_trip_total_time;
 	float vehicle_trip_total_distance;
@@ -89,7 +90,13 @@ typedef struct ind{
 	float riders_trip_total_distance;
 	float riders_unmatched;
 
-	int* gene;
+
+	/*O cromosomo é uma lista de rotas, onde cada rota é uma lista de vértices
+	 * A primeira dimensão terá tamanho N igual ao número de veículos disponíveis
+	 * A segunda dimensão terá tamanho igual ao número total de vértices do grafo
+	 * Todos as soluções terão N rotas, mas cada rota pode ter uma qtd variável de vértices
+	 * O fim da lista é encontrado ao verificar que o vértice lido é o destino*/
+	vertex*** cromossomo;
 	int n;//Número de soluções que dominam ind
 	struct ind* S;//Conjunto de soluções dominadas por ind
 	int Sn;//número de soluções dominadas por ind

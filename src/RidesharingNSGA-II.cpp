@@ -19,24 +19,22 @@ Grafo* graph;
 Population* p;
 
 
-Population* malloc_population(int n, int gene_size){
+Population* malloc_population(int pop_size){
 	Population* p1 = (Population*) malloc(sizeof(Population));
 
-	p1->list = (individual*) malloc(sizeof(individual)*n);
+	p1->list = (individual*) malloc(sizeof(individual)*pop_size);
 
-	for (int i = 0; i < n; i++){
+	for (int i = 0; i < pop_size; i++){
 		p1->list[i].n = 0;
-		p1->list[i].S = (individual*) malloc(sizeof(individual)*n);
+		p1->list[i].S = (individual*) malloc(sizeof(individual)*pop_size);
 		p1->list[i].Sn = 0;
-		p1->list[i].gene = (int*) malloc(sizeof(int)*gene_size);
+		p1->list[i].cromossomo = (vertex***) malloc(sizeof(vertex**)*vehicles_offers);
+		for (int j = 0; j< graph->size; j++){
+			p1->list[j].cromossomo[j] = (vertex**) malloc(sizeof(vertex*)*graph->size);
+		}
 	}
 	return p1;
 }
-
-void init_population(int n){
-	Population* p1 = malloc_population(n,10);
-}
-
 
 void config_problema_minimo(){
 	Grafo* g = new Grafo(8);
@@ -181,12 +179,21 @@ void config_problema_minimo(){
 	rider2->time_window[3] = rider2->LA;
 }
 
+void config_nsga_ii(){
+	p = malloc_population(20);
 
+}
+
+void cleanup(){
+	delete graph;
+}
 
 int main(){
 	srand (time(NULL));
 
 	config_problema_minimo();
+
+	config_nsga_ii();
 
 	graph->matrix[2][0].time = 21;
 
@@ -194,6 +201,7 @@ int main(){
 
 	cout << graph->vertex_list[1].id;
 
-	delete graph;
+
+	cleanup();
 	return 0;
 }
