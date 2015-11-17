@@ -5,45 +5,99 @@
  *      Author: Arthur
  */
 
-#include <vector>
-#include <iostream>
+#include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <float.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include "RidesharingNSGA-II.h"
-using namespace std;
 
 /**===================Global variables=========================================**/
-int riders_requests;
-int vehicles_offers;
+int RIDERS_REQUESTS;
+int VEHICLES_OFFERS;
 Grafo* graph;
-Population* p;
+Population* population;
+float Pcrossover;
+float Pmutation;
 
 
-Population* malloc_population(int pop_size){
-	Population* p1 = (Population*) malloc(sizeof(Population));
+/*Recebe uma rota que é parte do cromossomo (uma linha do cromossomo)
+ * e adiciona o carona na penultima posição, antes de chegar no destino
+ * TODO, tá faltando todas as validações de janela de tempo
+ *
+ * position informa qual a posição para inserir o carona, à partir do vértice de origem do veículo.
+ * Ex.: position = 0: primeira carona depois de sair do source
+ * position = 1: segunda carona.. e assim por diante*/
+bool add_rider_vehicle(vertex** rota_cromossomo, vertex* rider, int insertionPosition){
+	int i = 0;
+	while (rota_cromossomo[i] != NULL && i < graph->size){
+		if (rota_cromossomo[i] == rider) return false;
+		i++;
+	}
+	//chegando aqui, i-1 == ultima posicao
+	int lastPosition = i-1;
+	vertex* destiny = rota_cromossomo[lastPosition];
+	rota_cromossomo[lastPosition] = rider;
+	rota_cromossomo[lastPosition+1] = rider->destiny;
+	rota_cromossomo[lastPosition+2] = destiny;
+	rider->matched = true;
+	return true;
+}
 
-	p1->list = (individual*) malloc(sizeof(individual)*pop_size);
+/*Aloca na memória uma população de tamanho pop_size*/
+Population* initialize_population(int pop_size){
+	Population* p1 = (struct Population *) malloc(sizeof(struct Population));
+
+	p1->list = (Individual*) malloc(sizeof(Individual));
+	p1->size = pop_size;
 
 	for (int i = 0; i < pop_size; i++){
 		p1->list[i].n = 0;
-		p1->list[i].S = (individual*) malloc(sizeof(individual)*pop_size);
+		p1->list[i].S = (Individual *) malloc(sizeof(Individual)*pop_size);
 		p1->list[i].Sn = 0;
-		p1->list[i].cromossomo = (vertex***) malloc(sizeof(vertex**)*vehicles_offers);
-		for (int j = 0; j< graph->size; j++){
-			p1->list[j].cromossomo[j] = (vertex**) malloc(sizeof(vertex*)*graph->size);
+		p1->list[i].riders_trip_total_distance = 0;
+		p1->list[i].riders_trip_total_time = 0;
+		p1->list[i].riders_unmatched = 0;
+		p1->list[i].rotas = 0;
+		p1->list[i].vehicle_trip_total_distance = 0;
+		p1->list[i].vehicle_trip_total_time = 0;
+		p1->list[i].cromossomo = (vertex***) malloc(sizeof(vertex**)*VEHICLES_OFFERS);
+		for (int j = 0; j< VEHICLES_OFFERS; j++){
+			p1->list[i].cromossomo[j] = (vertex**) malloc(sizeof(vertex*)*graph->size);
 		}
+	}
+
+	for (int i = 0; i < pop_size; i++){
+		Individual* indv = &p1->list[i];
+
+		for (int k = 0; k < VEHICLES_OFFERS; k++){
+			/*Inicializa as K rotas do cromossomo atual com as origens e destinos de todas as ofertas de veículos*/
+			indv->cromossomo[k][0] = graph->vehicle_origins[k];
+			indv->cromossomo[k][1] = graph->vehicle_origins[k]->destiny;
+
+			/*Escolhe aleatoriamente 0 ou 1 carona da lista de caronas e adiciona à rota atual do cromossomo*/
+			int coin = rand() % RIDERS_REQUESTS + 1; //SE DER EXATAMENTE RIDERS_REQUESTS, CONSIDERA COMO 'não dar carona'
+			if (coin < RIDERS_REQUESTS && !graph->rider_origins[coin]->matched){
+				add_rider_vehicle(indv->cromossomo[k], graph->rider_origins[coin], 0);
+			}
+		}
+		clean_matches_graph(graph);
+
 	}
 	return p1;
 }
 
+
+
 /*Configura o grafo do problema, com as distancias entre cada cidade,
  * caronas e veículos disponíveis*/
 void config_problema_minimo(){
-	Grafo* g = new Grafo(8);
+	Grafo* g = new_grafo(8);
 	graph = g;
 
-	riders_requests = 2;
-	vehicles_offers = 2;
+	RIDERS_REQUESTS = 2;
+	VEHICLES_OFFERS = 2;
 
 
 	/*Configurando as distancias.*/
@@ -138,6 +192,7 @@ void config_problema_minimo(){
 	mt1->time_window[2] = mt1->ED + mt1->MTT;
 	mt1->time_window[3] = mt1->LA;
 	mt1->Capacity = 20;
+	g->vehicle_origins[0] = mt1;
 
 	/*Configurando o motorista 2*/
 	vertex* mt2 = &g->vertex_list[2];
@@ -152,6 +207,7 @@ void config_problema_minimo(){
 	mt2->time_window[2] = mt2->ED + mt1->MTT;
 	mt2->time_window[3] = mt2->LA;
 	mt2->Capacity = 20;
+	g->vehicle_origins[1] = mt2;
 
 	/*Configurando o carona 1*/
 	vertex* rider1 = &g->vertex_list[7];
@@ -165,6 +221,7 @@ void config_problema_minimo(){
 	rider1->time_window[1] = rider1->LA - mt1->MTT;
 	rider1->time_window[2] = rider1->ED + mt1->MTT;
 	rider1->time_window[3] = rider1->LA;
+	g->rider_origins[0] = rider1;
 
 
 	/*Configurando o carona 2*/
@@ -179,33 +236,94 @@ void config_problema_minimo(){
 	rider2->time_window[1] = rider2->LA - mt1->MTT;
 	rider2->time_window[2] = rider2->ED + mt1->MTT;
 	rider2->time_window[3] = rider2->LA;
+	g->rider_origins[1] = rider2;
 }
 
 
 
-void config_nsga_ii(){
-	p = malloc_population(20);
+
+/*Avalia a aptidão dos elementos da população em relação
+ * a cada um dos objetivos*/
+void evaluate_against_objective_functions(Population * pop){
+	float vttdmax = 0;//guarda a maior distancia total de uma solução
+	float vttdmin = FLT_MAX;
+	float vtttmax = 0;
+	float vtttmin = FLT_MAX;
+
+	for (int i = 0; i < pop->size; i++){//para cada indivíduo da população
+		Individual* indv = &pop->list[i];
+		for (int r = 0; r < VEHICLES_OFFERS; r++){//para cada rota
+			vertex** rota = indv->cromossomo[r];
+			vertex* source = rota[0];
+			vertex* destiny = source->destiny;
+			int v = 1;
+			while (rota[v] != NULL){
+				indv->vehicle_trip_total_distance += graph->matrix[source->id][rota[v]->id].distance;
+				indv->vehicle_trip_total_time += graph->matrix[source->id][rota[v]->id].time;
+				v++;
+			}
+			if (indv->vehicle_trip_total_distance > vttdmax)
+				vttdmax = indv->vehicle_trip_total_distance;
+			if (indv->vehicle_trip_total_distance < vttdmin)
+				vttdmin = indv->vehicle_trip_total_distance;
+
+			if (indv->vehicle_trip_total_time > vtttmax)
+				vtttmax = indv->vehicle_trip_total_time;
+			if (indv->vehicle_trip_total_time < vtttmin)
+				vtttmin = indv->vehicle_trip_total_time;
+		}
+	}
+
+	/*
+	 * Normalizando Os valores das distancias usando a fórmula (0 é máximo e 1 é mínimo)
+	 *   Zmax - Zi
+	 * ------------
+	 *  Zmax - Zmin
+	 *
+	 * */
+	for (int i = 0; i < pop->size; i++){
+		Individual* indv = &pop->list[i];
+		indv->vehicle_trip_total_distance = (vttdmax - indv->vehicle_trip_total_distance) / vttdmax-vttdmin;
+	}
 
 }
 
-void cleanup(){
-	delete graph;
-}
 
+/**
+ * Questões levantadas:
+ *
+ * Se a variável binária Xkij Ã© 1 apenas em um caso onde atende
+ *  o ultimo delivery e vai direto pro destino, nÃ£o existe variação de solução
+ *  quanto Ã s cidades entre o ultimo delivery e o destino do veiculo??
+ *  Nesse caso eu não tenho que me preocupar em minimizar essa distancia final percorrida
+ *  entre i+v,k+v???
+ *
+ *  Exato: na matriz, existe uma distância e um tempo conhecidos pra ir de k pra k+v
+ *  assim, nÃ£o existe possibilidade de eu tentar fazer um caminho menor, passando por outras cidades.
+ *  já que nenhuma outra cidade FAZ PARTE DO CAMINHO DE K PRA K+V!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *
+ *  a menor distancia entre k e k+v será a que tá na matriz
+ *  adicionando um detour, a distancia fica k -> i -> i+n -> k+v
+ */
 int main(){
+
+	Pcrossover = 0.75;
+	Pmutation = 0.01;
+
 	srand (time(NULL));
 
 	config_problema_minimo();
 
-	config_nsga_ii();
+	population = initialize_population(30);
+
+	evaluate_against_objective_functions(population);
 
 	graph->matrix[2][0].time = 21;
 
-	cout << graph->matrix[2][0].time << endl;
+	printf("%d\n", graph->matrix[2][0].time);
+	printf("%d\n", graph->vertex_list[1].id);
 
-	cout << graph->vertex_list[1].id;
 
-
-	cleanup();
+	clean_graph(graph);
 	return 0;
 }

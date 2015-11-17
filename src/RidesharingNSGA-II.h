@@ -12,22 +12,23 @@
 const float MPs = 16;//16 metros por segundo
 const float Service_time = 0;//Tempo gasto para servir um Rider
 
-union nfo{
+typedef struct Info{
 	float time;
 	float distance;
-};
+}Info;
 
 typedef struct vtx{
 	//Common
 	int id;
 	float time_window[4];
-	vtx* destiny;
+	struct vtx* destiny;
 	float ED;//Earliest Departure time 0 - 24 em horas Ex : 2,5 = 2:30h
 	float LA;//Latest Arrival time 0 - 24 em horas Ex : 2,5 = 2:30h
 	float AT;//variável de tempo A
 	float BT;//Variável de tempo B
 
 	//Rider=================================
+	bool matched;//se já foi feito o match desse carona
 	bool hasRider;
 	int demand;//dmi
 	float MTT;//rider's maximum travel time em horas
@@ -42,53 +43,75 @@ typedef struct vtx{
 } vertex;
 
 
-class Grafo{
-public:
-	nfo** matrix;
+typedef struct Grafo{
+	Info** matrix;
 	vertex* vertex_list;
+	vertex** vehicle_origins;//lista explicita com os vértices onde saem motoristas
+	vertex** rider_origins;//lista explicita com os vértices onde saem os caronas
 	int size;
-	//Constroi um grafo completo com n vértices
-	Grafo(int n_) : size(n_) {
-		matrix = (nfo**) malloc(sizeof(nfo*)*size);
-		for(int i=0; i< size; i++){
-			matrix[i] = (nfo*) malloc (sizeof(nfo)*size);
-		}
 
-		vertex_list = (vertex*) malloc(sizeof(vertex)*size);
+}Grafo;
 
-		for (int i = 0; i < size; i++){
-			vertex_list[i].id = i;
-			vertex_list[i].AT = 0;
-			vertex_list[i].BT = 1.3;
-			vertex_list[i].AD = 0;
-			vertex_list[i].BD = 1.3;
-			vertex_list[i].s = Service_time;//tempo de serviço é zero para todos os riders
-			vertex_list[i].demand = 1;//demanda é 1 para todos os riders
-			vertex_list[i].hasRider = false;
-			vertex_list[i].hasVehicle = false;
-			vertex_list[i].demand = 0;
-		}
+Grafo * new_grafo(int size){
+
+	Grafo * g = (Grafo *) malloc(sizeof(Grafo));
+
+	g->size = size;
+
+	g->matrix = (Info**) malloc(sizeof(Info*)*size);
+	for(int i=0; i< size; i++){
+		g->matrix[i] = (Info*) malloc (sizeof(Info)*size);
 	}
 
-	~Grafo(){
-		free(vertex_list);
-		for (int i = 0; i < size; i++){
-			free(matrix[i]);
-		}
-		free(matrix);
+	g->vertex_list = (vertex*) malloc(sizeof(vertex)*size);
+	g->vehicle_origins = (vertex**) malloc(sizeof(vertex*)*size);
+	g->rider_origins = (vertex**) malloc(sizeof(vertex*)*size);
+
+	for (int i = 0; i < size; i++){
+		g->vertex_list[i].id = i;
+		g->vertex_list[i].AT = 0;
+		g->vertex_list[i].BT = 1.3;
+		g->vertex_list[i].AD = 0;
+		g->vertex_list[i].BD = 1.3;
+		g->vertex_list[i].s = Service_time;//tempo de serviço é zero para todos os riders
+		g->vertex_list[i].demand = 1;//demanda é 1 para todos os riders
+		g->vertex_list[i].hasRider = false;
+		g->vertex_list[i].hasVehicle = false;
+		g->vertex_list[i].demand = 0;
 	}
-};
+
+	return g;
+}
+
+/*Desfaz os matchs registrados na lista de caronas*/
+void clean_matches_graph(Grafo *g){
+	int i = 0;
+	while (g->rider_origins[i] != NULL){
+		g->rider_origins[i]->matched = false;
+	}
+}
+
+void clean_graph(Grafo * g){
+	free(g->vertex_list);
+	for(int i=0; i< g->size; i++){
+		free(g->matrix[i]);
+	}
+	free(g->matrix);
+	free(g);
+}
 
 
 /**==================== NSGA-II ==============================================**/
 
 
-typedef struct ind{
+typedef struct Individual{
 	float vehicle_trip_total_time;
 	float vehicle_trip_total_distance;
 	float riders_trip_total_time;
 	float riders_trip_total_distance;
 	float riders_unmatched;
+
+	int rotas;//??????????
 
 
 	/*O cromosomo é uma lista de rotas, onde cada rota é uma lista de vértices
@@ -98,15 +121,14 @@ typedef struct ind{
 	 * O fim da lista é encontrado ao verificar que o vértice lido é o destino*/
 	vertex*** cromossomo;
 	int n;//Número de soluções que dominam ind
-	struct ind* S;//Conjunto de soluções dominadas por ind
+	struct Individual* S;//Conjunto de soluções dominadas por ind
 	int Sn;//número de soluções dominadas por ind
-}individual;
+}Individual;
 
 
-typedef struct popl{
-
-	individual* list;
-
+typedef struct Population{
+	Individual* list;
+	int size;
 }Population;
 
 
