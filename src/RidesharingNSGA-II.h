@@ -58,14 +58,14 @@ Grafo * new_grafo(int size){
 
 	g->size = size;
 
-	g->matrix = (Info**) malloc(sizeof(Info*)*size);
+	g->matrix = (Info**) calloc(size, sizeof(Info*));
 	for(int i=0; i< size; i++){
-		g->matrix[i] = (Info*) malloc (sizeof(Info)*size);
+		g->matrix[i] = (Info*) calloc (size, sizeof(Info));
 	}
 
-	g->vertex_list = (vertex*) malloc(sizeof(vertex)*size);
-	g->vehicle_origins = (vertex**) malloc(sizeof(vertex*)*size);
-	g->rider_origins = (vertex**) malloc(sizeof(vertex*)*size);
+	g->vertex_list = (vertex*) calloc(size, sizeof(vertex));
+	g->vehicle_origins = (vertex**) calloc(size, sizeof(vertex*));
+	g->rider_origins = (vertex**) calloc(size, sizeof(vertex*));
 
 	for (int i = 0; i < size; i++){
 		g->vertex_list[i].id = i;
@@ -88,16 +88,23 @@ void clean_matches_graph(Grafo *g){
 	int i = 0;
 	while (g->rider_origins[i] != NULL){
 		g->rider_origins[i]->matched = false;
+		i++;
 	}
 }
 
 void clean_graph(Grafo * g){
-	free(g->vertex_list);
-	for(int i=0; i< g->size; i++){
-		free(g->matrix[i]);
+	if (g != NULL) {
+		if (g->vertex_list != NULL)
+			free(g->vertex_list);
+		if (g->matrix != NULL) {
+			for(int i=0; i< g->size; i++){
+				if (g->matrix[i] != NULL)
+					free(g->matrix[i]);
+			}
+			free(g->matrix);
+		}
+		free(g);
 	}
-	free(g->matrix);
-	free(g);
 }
 
 

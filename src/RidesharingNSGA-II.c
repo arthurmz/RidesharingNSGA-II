@@ -54,7 +54,7 @@ Population* initialize_population(int pop_size){
 
 	for (int i = 0; i < pop_size; i++){
 		p1->list[i].n = 0;
-		p1->list[i].S = (Individual *) malloc(sizeof(Individual)*pop_size);
+		p1->list[i].S = (Individual *) calloc(pop_size, sizeof(Individual));
 		p1->list[i].Sn = 0;
 		p1->list[i].riders_trip_total_distance = 0;
 		p1->list[i].riders_trip_total_time = 0;
@@ -62,9 +62,9 @@ Population* initialize_population(int pop_size){
 		p1->list[i].rotas = 0;
 		p1->list[i].vehicle_trip_total_distance = 0;
 		p1->list[i].vehicle_trip_total_time = 0;
-		p1->list[i].cromossomo = (vertex***) malloc(sizeof(vertex**)*VEHICLES_OFFERS);
+		p1->list[i].cromossomo = (vertex***) calloc(VEHICLES_OFFERS, sizeof(vertex**));
 		for (int j = 0; j< VEHICLES_OFFERS; j++){
-			p1->list[i].cromossomo[j] = (vertex**) malloc(sizeof(vertex*)*graph->size);
+			p1->list[i].cromossomo[j] = (vertex**) calloc(graph->size, sizeof(vertex*));
 		}
 	}
 
@@ -72,11 +72,11 @@ Population* initialize_population(int pop_size){
 		Individual* indv = &p1->list[i];
 
 		for (int k = 0; k < VEHICLES_OFFERS; k++){
-			/*Inicializa as K rotas do cromossomo atual com as origens e destinos de todas as ofertas de veículos*/
+			//Inicializa as K rotas do cromossomo atual com as origens e destinos de todas as ofertas de veículos
 			indv->cromossomo[k][0] = graph->vehicle_origins[k];
 			indv->cromossomo[k][1] = graph->vehicle_origins[k]->destiny;
 
-			/*Escolhe aleatoriamente 0 ou 1 carona da lista de caronas e adiciona à rota atual do cromossomo*/
+			//Escolhe aleatoriamente 0 ou 1 carona da lista de caronas e adiciona à rota atual do cromossomo
 			int coin = rand() % RIDERS_REQUESTS + 1; //SE DER EXATAMENTE RIDERS_REQUESTS, CONSIDERA COMO 'não dar carona'
 			if (coin < RIDERS_REQUESTS && !graph->rider_origins[coin]->matched){
 				add_rider_vehicle(indv->cromossomo[k], graph->rider_origins[coin], 0);
@@ -255,7 +255,7 @@ void evaluate_against_objective_functions(Population * pop){
 		for (int r = 0; r < VEHICLES_OFFERS; r++){//para cada rota
 			vertex** rota = indv->cromossomo[r];
 			vertex* source = rota[0];
-			vertex* destiny = source->destiny;
+			//vertex* destiny = source->destiny;
 			int v = 1;
 			while (rota[v] != NULL){
 				indv->vehicle_trip_total_distance += graph->matrix[source->id][rota[v]->id].distance;
@@ -314,7 +314,7 @@ int main(){
 
 	config_problema_minimo();
 
-	population = initialize_population(30);
+	population = initialize_population(2);
 
 	evaluate_against_objective_functions(population);
 
