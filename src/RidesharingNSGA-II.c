@@ -77,7 +77,7 @@ Population* initialize_population(int pop_size){
 			indv->cromossomo[k][1] = graph->vehicle_origins[k]->destiny;
 
 			//Escolhe aleatoriamente 0 ou 1 carona da lista de caronas e adiciona à rota atual do cromossomo
-			int coin = rand() % RIDERS_REQUESTS + 1; //SE DER EXATAMENTE RIDERS_REQUESTS, CONSIDERA COMO 'não dar carona'
+			int coin = rand() % (RIDERS_REQUESTS + 1); //SE DER EXATAMENTE RIDERS_REQUESTS, CONSIDERA COMO 'não dar carona'
 			if (coin < RIDERS_REQUESTS && !graph->rider_origins[coin]->matched){
 				add_rider_vehicle(indv->cromossomo[k], graph->rider_origins[coin], 0);
 			}
@@ -113,8 +113,12 @@ void config_problema_minimo(){
 	g->matrix[0][4].time = g->matrix[0][4].distance / MPs;
 	g->matrix[0][5].distance = 3000;
 	g->matrix[0][5].time = g->matrix[0][5].distance / MPs;
+	g->matrix[0][6].distance = 3210;
+	g->matrix[0][6].time = g->matrix[0][6].distance / MPs;
+	g->matrix[0][7].distance = 1234;
+	g->matrix[0][7].time = g->matrix[0][7].distance / MPs;
 
-	g->matrix[1][0].distance = 1200 / MPs;
+	g->matrix[1][0].distance = 1200;
 	g->matrix[1][0].time = g->matrix[1][0].distance / MPs;
 	g->matrix[1][1].distance = 0;
 	g->matrix[1][1].time = g->matrix[1][1].distance / MPs;
@@ -126,6 +130,10 @@ void config_problema_minimo(){
 	g->matrix[1][4].time = g->matrix[1][4].distance / MPs;
 	g->matrix[1][5].distance = 5850;
 	g->matrix[1][5].time = g->matrix[1][5].distance / MPs;
+	g->matrix[1][6].distance = 8462;
+	g->matrix[1][6].time = g->matrix[1][6].distance / MPs;
+	g->matrix[1][7].distance = 2473;
+	g->matrix[1][7].time = g->matrix[1][7].distance / MPs;
 
 	g->matrix[2][0].distance = 7120;
 	g->matrix[2][0].time = g->matrix[2][0].distance / MPs;
@@ -139,6 +147,10 @@ void config_problema_minimo(){
 	g->matrix[2][4].time = g->matrix[2][4].distance / MPs;
 	g->matrix[2][5].distance = 5000;
 	g->matrix[2][5].time = g->matrix[2][5].distance / MPs;
+	g->matrix[2][6].distance = 370;
+	g->matrix[2][6].time = g->matrix[2][6].distance / MPs;
+	g->matrix[2][7].distance = 928;
+	g->matrix[2][7].time = g->matrix[2][7].distance / MPs;
 
 	g->matrix[3][0].distance = 3000;
 	g->matrix[3][0].time = g->matrix[3][0].distance / MPs;
@@ -152,6 +164,10 @@ void config_problema_minimo(){
 	g->matrix[3][4].time = g->matrix[3][4].distance / MPs;
 	g->matrix[3][5].distance = 1020;
 	g->matrix[3][5].time = g->matrix[3][5].distance / MPs;
+	g->matrix[3][6].distance = 555;
+	g->matrix[3][6].time = g->matrix[3][6].distance / MPs;
+	g->matrix[3][7].distance = 3421;
+	g->matrix[3][7].time = g->matrix[3][7].distance / MPs;
 
 	g->matrix[4][0].distance = 4500;
 	g->matrix[4][0].time = g->matrix[4][0].distance / MPs;
@@ -165,6 +181,10 @@ void config_problema_minimo(){
 	g->matrix[4][4].time = g->matrix[4][4].distance / MPs;
 	g->matrix[4][5].distance = 4000;
 	g->matrix[4][5].time = g->matrix[4][5].distance / MPs;
+	g->matrix[4][6].distance = 1001;
+	g->matrix[4][6].time = g->matrix[4][6].distance / MPs;
+	g->matrix[4][7].distance = 6842;
+	g->matrix[4][7].time = g->matrix[4][7].distance / MPs;
 
 	g->matrix[5][0].distance = 3000;
 	g->matrix[5][0].time = g->matrix[5][0].distance / MPs;
@@ -175,9 +195,47 @@ void config_problema_minimo(){
 	g->matrix[5][3].distance = 1020;
 	g->matrix[5][3].time = g->matrix[5][3].distance / MPs;
 	g->matrix[5][4].distance = 4000;
-	g->matrix[5][4].distance = g->matrix[5][4].distance / MPs;
+	g->matrix[5][4].time = g->matrix[5][4].distance / MPs;
 	g->matrix[5][5].distance = 0;
 	g->matrix[5][5].time = g->matrix[5][5].distance / MPs;
+	g->matrix[5][6].distance = 4970;
+	g->matrix[5][6].time = g->matrix[5][6].distance / MPs;
+	g->matrix[5][7].distance = 748;
+	g->matrix[5][7].time = g->matrix[5][7].distance / MPs;
+
+	g->matrix[6][0].distance = 3210;
+	g->matrix[6][0].time = g->matrix[6][0].distance / MPs;
+	g->matrix[6][1].distance = 8462;
+	g->matrix[6][1].time = g->matrix[6][1].distance / MPs;
+	g->matrix[6][2].distance = 370;
+	g->matrix[6][2].time = g->matrix[6][2].distance / MPs;
+	g->matrix[6][3].distance = 555;
+	g->matrix[6][3].time = g->matrix[6][3].distance / MPs;
+	g->matrix[6][4].distance = 1001;
+	g->matrix[6][4].time = g->matrix[6][4].distance / MPs;
+	g->matrix[6][5].distance = 4970;
+	g->matrix[6][5].time = g->matrix[6][5].distance / MPs;
+	g->matrix[6][6].distance = 0;
+	g->matrix[6][6].time = g->matrix[6][6].distance / MPs;
+	g->matrix[6][7].distance = 9800;
+	g->matrix[6][7].time = g->matrix[6][7].distance / MPs;
+
+	g->matrix[7][0].distance = 1234;
+	g->matrix[7][0].time = g->matrix[7][0].distance / MPs;
+	g->matrix[7][1].distance = 2473;
+	g->matrix[7][1].time = g->matrix[7][1].distance / MPs;
+	g->matrix[7][2].distance = 928;
+	g->matrix[7][2].time = g->matrix[7][2].distance / MPs;
+	g->matrix[7][3].distance = 3421;
+	g->matrix[7][3].time = g->matrix[7][3].distance / MPs;
+	g->matrix[7][4].distance = 6842;
+	g->matrix[7][4].time = g->matrix[7][4].distance / MPs;
+	g->matrix[7][5].distance = 748;
+	g->matrix[7][5].time = g->matrix[7][5].distance / MPs;
+	g->matrix[7][6].distance = 9800;
+	g->matrix[7][6].time = g->matrix[7][6].distance / MPs;
+	g->matrix[7][7].distance = 0;
+	g->matrix[7][7].time = g->matrix[7][7].distance / MPs;
 
 	/*Configurando o motorista 1*/
 	vertex* mt1 = &g->vertex_list[0];
@@ -289,6 +347,25 @@ void evaluate_against_objective_functions(Population * pop){
 }
 
 
+void print_things(){
+	for (int i = 0; i < graph->size; i++ ){
+		for (int j = 0; j < graph->size; j++){
+			printf("%04.2f ", graph->matrix[i][j].distance);
+		}
+		printf("\n");
+	}
+
+
+	printf("-----------------------------------------\n");
+
+	for (int i = 0; i < graph->size; i++ ){
+		for (int j = 0; j < graph->size; j++){
+			printf("%04.2f ", graph->matrix[i][j].time);
+		}
+		printf("\n");
+	}
+}
+
 /**
  * Questões levantadas:
  *
@@ -306,23 +383,45 @@ void evaluate_against_objective_functions(Population * pop){
  *  adicionando um detour, a distancia fica k -> i -> i+n -> k+v
  */
 int main(){
-
 	Pcrossover = 0.75;
 	Pmutation = 0.01;
 
 	srand (time(NULL));
-
 	config_problema_minimo();
-
 	population = initialize_population(2);
-
 	evaluate_against_objective_functions(population);
+	fast_nondominated_sort(population);
+	Population * selected = select_parents_by_rank(population);
+	Population * children = crossover_and_mutation(selected,Pcrossover, Pmutation);
+	while (!stopCondition()){
+		evaluate_against_objective_functions(children);
+		Population * uniao = merge(population, children);
+		Front ** frontList = fast_nondominated_sort(uniao);
+		Population * parents;
+		int frontL = 0;
+		for (i = 0; i < frontList->size; i++){
+			crowding_distance_assignment(frontList[i]);
+			if (parents->size+frontList[i].size > population.size){
+				frontL = i;
+				break;
+			}
+			else{
+				parents = merge(parents,frontList[i]);
+			}
+		}
+		if (parents.size < population.size){
+			frontL = sort_by_rank_and_distance(frontL);
+			for (int p = 0 ; p < population.size; p++){
+				parents = p;
+			}
+		}
 
-	graph->matrix[2][0].time = 21;
+		Population * selected = select_parents_by_rank(population);
+		Population * children = crossover_and_mutation(selected,Pcrossover, Pmutation);
+	}
 
-	printf("%d\n", graph->matrix[2][0].time);
-	printf("%d\n", graph->vertex_list[1].id);
 
+	print_things();
 
 	clean_graph(graph);
 	return 0;
