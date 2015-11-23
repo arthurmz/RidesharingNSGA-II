@@ -7,6 +7,7 @@
 
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "StaticVariables.h"
 #include "Helper.h"
 #include "NSGAII.h"
@@ -160,6 +161,27 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	return(is_rota_valida(rota));
 }
 
+/*Pega carona aleatória não visitada*/
+Request *get_carona_aleatoria(Graph *g){
+	int min = g->drivers;
+	int max = g->riders;
+
+	int rnd = min + (rand() % max);
+	Request * carona = &g->request_list[rnd];
+
+	if (carona->matched){
+		carona = NULL;
+		Request * carona_tmp = &g->request_list[g->drivers];
+		for (int i = g->drivers; i < g->total_requests; i++){
+			if (!carona_tmp->matched){
+				carona = carona_tmp;
+				break;
+			}
+		}
+	}
+	return carona;
+}
+
 void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset){
 	if (posicao_insercao <= 0 || offset <= 0) return;
 
@@ -201,28 +223,22 @@ Population *generate_random_population(int size, Graph *g){
 			int qtd_caronas_inserir = rand() % 5;//Outro parâmetro tirado do bolso
 			int caronas_inseridos = 0;
 			bool inserir_novo_carona = true;
-			while (inserir_novo_carona){
+			while (inserir_novo_carona && caronas_inseridos < qtd_caronas_inserir){
 
-				int posicao_inicial = 1;
+				//TODO, tentando inserir apenas em um local
+				int posicao_inicial = 1 + (rand () % (rota->length-1));
 				int offset = 1;
-				Request * carona = NULL;
+				Request *carona = get_carona_aleatoria(g);
 
 				bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
+
 				if (!conseguiu){
 					desfaz_insercao_carona_rota(rota, carona, posicao_inicial, offset);
-				}
-
-				if (caronas_inseridos == qtd_caronas_inserir)
 					inserir_novo_carona = false;
+				}
 			}
 		}
 	}
 	return p;
-}
-
-/*Insere um "request" Driver ou Rider em uma determinada rota
- * na posição N*/
-void insert_request_route(){
-
 }
 
