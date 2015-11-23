@@ -10,6 +10,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "Helper.h"
 #include "NSGAII.h"
@@ -59,9 +60,10 @@ int main(int argc,  char** argv){
 	sscanf(argv[2], "%d", &POPULATION_SIZE);
 	sscanf(argv[3], "%d", &ITERATIONS);
 	Graph * g = (Graph*)parse_file(filename);
-
+	if (g == NULL) return 0;
 
 	Population * p = generate_random_population(POPULATION_SIZE, g);
+	Population * offspring = generate_offspring(p);
 
 
 

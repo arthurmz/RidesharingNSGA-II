@@ -15,25 +15,36 @@ typedef struct Request{
 	bool driver;//true -driver, false -rider
 	bool matched;//true se for um carona já combinado
 	int req_no;
-	double request_arrival_time;
-	double service_time_at_source;
+	double request_arrival_time;//A hora em que esse request foi descoberto (desconsiderado pq o problema é estático)
+	double service_time_at_source;//Tempo gasto para atender o source (Diferente da HORA em que chega no source)
+	double service_time_at_delivery;//Tempo gasto para atender o destino (Diferente da HORA em que chega no destino)
 	double pickup_location_longitude;
 	double pickup_location_latitude;
-	double pickup_earliest_time;
-	double pickup_latest_time;
-	double service_time_at_delivery;
 	double delivery_location_long;
 	double delivery_location_latitude;
+	double pickup_earliest_time;
+	double pickup_latest_time;
 	double delivery_earliest_time;
 	double delivery_latest_time;
+
+
+
 }Request;
 
 /*Gene of a solution*/
 typedef struct Service{
 	Request *r;
-	bool source;//1-está saindo da origem, 0-está chegando no destino
+	//Time aqui é referente à HORA em que CHEGA nos pontos do Rider
+	//Ou a HORA em que SAI da origem do Driver.
+	double time;
+	//Tempo de espera nos pontos de source do rider
+	//Atualizado ao inserir uma nova carona
+	double waiting_time;
+	bool is_source;//1-está saindo da origem, 0-está chegando no destino
 }Service;
 
+/*A rota guarda o serviço, podendo sobrescrever
+ * sem se preocupar com a memória*/
 typedef struct Rota{
 	Service *list;
 	int length;
@@ -86,6 +97,9 @@ void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *front_i);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
+bool is_rota_valida(Rota *rota);
+bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 
 
 #endif /* NSGAII_H_ */

@@ -44,11 +44,8 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 
 	for (int i = 0; i < drivers_qtd; i++){
 		Service * result = calloc(20, sizeof(Service));//Apenas uma estimativa de quanto vai ocupar
-		printf("Alocado com sucesso, lista %d\n", i);
 		ind->cromossomo[i].list = result;
 		ind->cromossomo[i].length = 0;
-		printf("Transferencia feita com sucesso, %d\n", i);
-
 	}
 	return ind;
 }
@@ -70,7 +67,7 @@ void sort(Population *front_i, int k){
 
 }
 
-/*TESTADO- OK*/
+/*Distância em km*/
 double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 	double R = 6372.8;
 	double to_rad = 3.1415926536 / 180;
@@ -88,6 +85,12 @@ double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 double haversine(Request *a, Request *b){
 	return haversine_helper(a->pickup_location_latitude, a->pickup_location_longitude,
 			b->delivery_location_latitude, b->delivery_location_long);
+}
+
+/*Tempo em minutos*/
+double time_between_requests(Request *a, Request *b){
+	double distance = haversine(a, b);
+	return distance / VEHICLE_SPEED * 60;
 }
 
 Graph * parse_file(char *filename){

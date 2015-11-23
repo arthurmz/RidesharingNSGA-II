@@ -126,21 +126,71 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 }
 
 
+/*Restrição 2 e 3 do artigo é garantida pois sempre que um carona é adicionado
+ * seu destino tbm é adicionado
+ * Restrição 4 é garantida pois ao fazer o match o carona não pode ser usado pra outras inserções
+ * Restrição 5, uma vez que só pode ser feito match uma vez, tá garantido
+ * Restrição 6 tem que garantir que a hora que eu chego no ponto J não pode ser maior do que a
+ * soma da hora de chegada no ponto anterior com o tempo de viajgem entre IJ.
+ * Restrição 7 tem que garantir que a janela de tempo está sendo satisfeitaa TODO
+ * Restrição 8 já é atendida pela forma de inserção do carona
+ * Restirção 9 e 10 A carga da rota tem que ser verificada a cada inserção
+ * OU seja, tem que verificar que a todo instante a carga está dentro do limite
+ * Restrição 11 é garantida pela forma como é feita a inserção
+ * Restrição 12 e 13 é a verificação da distancia e tempo do motorista
+ * Restrição 14 é a verificação de tempo do carona*/
 bool is_rota_valida(Rota *rota){
-	Service * source = rota->list[0];
-	Service * destiny = rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source->r, destiny->r);
+
+	Service * source = &rota->list[0];
+	Service * destiny = &rota->list[rota->length-1];
+	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
+	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
 
 	double accDistance =0;
 	for (int i = 0; i < rota->length -1; i++){
-		Request *a = rota->list[i]->r;
-		Request *b = rota->list[i]->r;
+		Request *a = rota->list[i].r;
+		Request *b = rota->list[i+1].r;
 
-		accDistance = accDistance + haversine(a,b);
+		accDistance += haversine(a,b);
+	}
+
+	double accTime = 0;
+	for (int i = 0; i < rota->length -1; i++){
+		Request *a = rota->list[i].r;
+		Request *b = rota->list[i+1].r;
+
+		accTime += time_between_requests(a,b);
 	}
 
 
-	return accDistance <= MTD;
+	return accDistance <= MTD && accTime <= MTT;
+}
+
+/*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
+ * Considera que o tempo de espera do anterior já está calculado*/
+double calculate_time_at(Service * actual, Service *ant){
+	double next_time = 0;
+	if (ant->is_source){
+		next_time = ant->time + ant->r->service_time_at_source + time_between_requests(ant->r, actual->r) + ant->waiting_time;
+	}
+	else{
+		next_time = ant->time + ant->r->service_time_at_delivery + time_between_requests(ant->r, actual->r);
+	}
+	return next_time;
+}
+
+/*Atualiza as Horas de chegada e o tempo de espera em cada ponto*/
+void update_times(Rota *rota){
+	for (int i = 0; i < rota->length-1; i++){
+		Service *ant = &rota->list[i];
+		Service *actual = &rota->list[i+1];
+
+		actual->time = calculate_time_at(actual, ant);
+		if (actual->is_source)
+			actual->waiting_time = fmax(0, actual->r->pickup_earliest_time - actual->time);
+		else
+			actual->waiting_time = 0;
+	}
 }
 
 /*
@@ -153,26 +203,36 @@ bool is_rota_valida(Rota *rota){
  * 	2 é o que pula um e insere.
  * */
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset){
-	if (posicao_insercao <= 0 || offset <= 0) return false;
+	if (posicao_insercao <= 0 || offset <= 0 || carona == NULL) return false;
 
 	int ultimaPos = rota->length-1;
-
+	//Empurra todo mundo depois da posição de inserção
 	for (int i = ultimaPos; i >= posicao_insercao; i--){
 		rota->list[i+1] = rota->list[i];
 	}
-	rota->list[posicao_insercao].r = carona;
-	rota->list[posicao_insercao].source = true;
-
+	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
 		rota->list[i+1] = rota->list[i];
 	}
+
+	//Insere o conteúdo do novo carona
+	rota->list[posicao_insercao].r = carona;
+	rota->list[posicao_insercao].is_source = true;
+	//Insere o conteúdo do destino do carona
 	rota->list[posicao_insercao+offset].r = carona;
-	rota->list[posicao_insercao+offset].source = false;
+	rota->list[posicao_insercao+offset].is_source = false;
+
+	update_times(rota);
 
 	rota->length += 2;
 	carona->matched = true;
 
-	return(is_rota_valida(rota));
+	if (!is_rota_valida(rota)){
+		desfaz_insercao_carona_rota(rota, carona, posicao_insercao, offset);
+		update_times(rota);
+		return false;
+	}
+	return true;
 }
 
 /*Pega carona aleatória não visitada*/
@@ -227,28 +287,31 @@ Population *generate_random_population(int size, Graph *g){
 
 			//Insere o motorista na rota
 			rota->list[0].r = driver;
-			rota->list[0].source = true;
+			rota->list[0].is_source = true;
+			rota->list[0].time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
 			rota->list[1].r = driver;
-			rota->list[1].source = false;
+			rota->list[1].is_source = false;
+			rota->list[1].time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
 			rota->length = 2;
 
 
 			//Insere mais N caronas
 			int qtd_caronas_inserir = rand() % 5;//Outro parâmetro tirado do bolso
 			int caronas_inseridos = 0;
-			bool inserir_novo_carona = true;
-			while (inserir_novo_carona && caronas_inseridos < qtd_caronas_inserir){
-
-				//TODO, tentando inserir apenas em um local
+			int tentativas_restantes = 3;//Quantas vezes vai tentar depois de não dar match
+			while (tentativas_restantes > 0 && caronas_inseridos < qtd_caronas_inserir){
 				int posicao_inicial = 1 + (rand () % (rota->length-1));
-				int offset = 1;
+				int offset = 1;//TODO, variar o offset
 				Request *carona = get_carona_aleatoria(g);
 
+				if (carona == NULL) break;
 				bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
 
 				if (!conseguiu){
-					desfaz_insercao_carona_rota(rota, carona, posicao_inicial, offset);
-					inserir_novo_carona = false;
+					tentativas_restantes--;
+				}
+				else{
+					caronas_inseridos++;
 				}
 			}
 		}
@@ -256,3 +319,9 @@ Population *generate_random_population(int size, Graph *g){
 	return p;
 }
 
+/*Gera uma população de filhos, usando seleção, crossover e mutação*/
+Population * generate_offspring(Population *parents){
+	Population *offspring = (Population*) new_empty_population(parents->size);
+
+	return offspring;
+}
