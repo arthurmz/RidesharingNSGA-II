@@ -125,8 +125,22 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 	return g;
 }
 
-bool is_rota_valida(Service *rota){
-	return false;
+
+bool is_rota_valida(Rota *rota){
+	Service * source = rota->list[0];
+	Service * destiny = rota->list[rota->length-1];
+	double MTD = AD + BD * haversine(source->r, destiny->r);
+
+	double accDistance =0;
+	for (int i = 0; i < rota->length -1; i++){
+		Request *a = rota->list[i]->r;
+		Request *b = rota->list[i]->r;
+
+		accDistance = accDistance + haversine(a,b);
+	}
+
+
+	return accDistance <= MTD;
 }
 
 /*

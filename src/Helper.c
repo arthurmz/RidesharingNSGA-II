@@ -7,7 +7,6 @@
 
 #include "Helper.h"
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 
 
@@ -72,7 +71,7 @@ void sort(Population *front_i, int k){
 }
 
 /*TESTADO- OK*/
-double haversine(double lat1, double lon1, double lat2, double lon2){
+double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 	double R = 6372.8;
 	double to_rad = 3.1415926536 / 180;
 	double dLat = to_rad * (lat2 - lat1);
@@ -84,6 +83,11 @@ double haversine(double lat1, double lon1, double lat2, double lon2){
 	double a = pow (sin(dLat/2),2) + pow(sin(dLon/2),2) * cos(lat1) * cos(lat2);
 	double c = 2 * asin(sqrt(a));
 	return R * c;
+}
+
+double haversine(Request *a, Request *b){
+	return haversine_helper(a->pickup_location_latitude, a->pickup_location_longitude,
+			b->delivery_location_latitude, b->delivery_location_long);
 }
 
 Graph * parse_file(char *filename){
