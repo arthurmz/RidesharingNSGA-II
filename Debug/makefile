@@ -23,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: RidesharingNSGA-II.exe
+all: RidesharingNSGA-II
 
 # Tool invocations
-RidesharingNSGA-II.exe: $(OBJS) $(USER_OBJS)
+RidesharingNSGA-II: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
-	@echo 'Invoking: MinGW C Linker'
-	gcc  -o "RidesharingNSGA-II.exe" $(OBJS) $(USER_OBJS) $(LIBS)
+	@echo 'Invoking: GCC C Linker'
+	gcc  -o "RidesharingNSGA-II" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) RidesharingNSGA-II.exe
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) RidesharingNSGA-II
 	-@echo ' '
 
 .PHONY: all clean dependents
