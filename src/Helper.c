@@ -41,6 +41,7 @@ void clean_front_list(Fronts * f){
 Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 	Individuo *ind = calloc(1, sizeof(Individuo));
 	ind->cromossomo = (Rota*) calloc(drivers_qtd, sizeof(Rota));
+	ind->size = drivers_qtd;
 
 	for (int i = 0; i < drivers_qtd; i++){
 		Service * result = calloc(20, sizeof(Service));//Apenas uma estimativa de quanto vai ocupar

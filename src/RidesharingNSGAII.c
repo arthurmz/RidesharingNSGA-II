@@ -20,30 +20,32 @@ int maiddn(void) {
 	int POPULATION_SIZE = 10;
 	int ITERATIONS = 100;
 
-	Fronts *frontsList = new_front_list(POPULATION_SIZE*2);
+//	Fronts *frontsList = new_front_list(POPULATION_SIZE*2);
 
 
 	//Population *pop = generate_random_population(POPULATION_SIZE);
-/*	Population *offspring = generate_offspring(pop);
-	Population merge = new_population(population_size*2);
+	//Population *offspring = generate_offspring(pop);
+	//Population merge = new_population(population_size*2);
 
-	int iteration = 0;
-	while (iteration < ITERATIONS){
-		merge(pop, offspring, merge);
-		fast_nondominated_sort(merge, frontsList);
-		choose_for_next_population(frontsList, pop);
-		generate_offspring(offspring);
-	}
+	//int iteration = 0;
+	//while (iteration < ITERATIONS){
+		//merge(pop, offspring, merge);
+		//fast_nondominated_sort(merge, frontsList);
+		//choose_for_next_population(frontsList, pop);
+		//generate_offspring(offspring);
+	//}
 
-	Fronts* frontsList = new_front_list(10);
-	clean_front_list(frontsList);
-*/
+	//Fronts* frontsList = new_front_list(10);
+	//clean_front_list(frontsList);
+
 	//fast_nondominated_sort(Population *p, frontsList);
 	//crowding_distance_assignment(frontsList->list[0]);
 	return EXIT_SUCCESS;
 }
 
+Population * generate_next_population(frontsList){
 
+}
 
 /*Parametros: nome do arquivo*/
 int main(int argc,  char** argv){
@@ -62,12 +64,26 @@ int main(int argc,  char** argv){
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
-	Population * p = generate_random_population(POPULATION_SIZE, g);
-	Population * offspring = generate_offspring(p);
+	Fronts *frontsList = new_front_list(POPULATION_SIZE*2);
+
+	Population * pop = generate_random_population(POPULATION_SIZE, g);
+	fast_nondominated_sort(pop, frontsList);
+	/*Population p_next = reduce_population(frontsList);
+	Population *offspring = generate_offspring(frontsList);
+	Population large_population = new_population(POPULATION_SIZE*2);
+
+	int iterations = 0;
+	while(iterations < ITERATIONS){
+		fast_nondominated_sort(large_population, Fronts * frontsList);
+		Population p_next = reduce_population(frontsList);
+		generate_offspring(p_next);
 
 
+		iterations++;
+	}
+	*/
 
-	dealoc_population(p);
+	dealoc_population(pop);
 	dealoc_graph(g);
 	return EXIT_SUCCESS;
 }

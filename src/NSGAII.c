@@ -37,9 +37,19 @@ bool dominates(Individuo *a, Individuo *b){
 }
 
 void add_dominated(Individuo *b, Individuo *a){
-	int index = b->dominates_list_count;
-	b->dominates_list[index] = a;
-	b->dominated_by_count++;
+	if (b->dominates_list == NULL){
+		b->dominates_list = malloc(16* sizeof(Individuo*));
+		b->dominates_list_capacity = 16;
+	}
+
+	if (b->dominates_list_capacity <= b->dominates_list_count){
+		b->dominates_list_capacity += 16;
+		Individuo **temp = realloc(b->dominates_list, b->dominates_list_capacity * sizeof(Individuo*));
+		if (temp != NULL) b->dominates_list = temp;
+	}
+	b->dominates_list[b->dominates_list_count] = a;
+	b->dominates_list_count++;
+
 }
 
 void fast_nondominated_sort(Population *population, Fronts * fronts){
@@ -164,18 +174,34 @@ bool is_carga_dentro_limite(Rota *rota){
 	return true;
 }
 
-/*Verifica se a distancia percorrida pelo motorista é respeitada*/
-bool is_distancia_motorista_respeitada(Rota * rota){
-	Service * source = &rota->list[0];
-	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
+double distancia_percorrida(Rota * rota){
 	double accDistance =0;
 	for (int i = 0; i < rota->length -1; i++){
 		Request *a = rota->list[i].r;
 		Request *b = rota->list[i+1].r;
 		accDistance += haversine(a,b);
 	}
+
+	return accDistance;
+}
+
+/*Verifica se a distancia percorrida pelo motorista é respeitada*/
+bool is_distancia_motorista_respeitada(Rota * rota){
+	Service * source = &rota->list[0];
+	Service * destiny = &rota->list[rota->length-1];
+	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
+	double accDistance = distancia_percorrida(rota);
 	return accDistance <= MTD;
+}
+
+double tempo_gasto_rota(Rota *rota, int i, int j){
+	double accTime =0;
+	for (int k = i; k < j; k++){
+		Request *a = rota->list[k].r;
+		Request *b = rota->list[k+1].r;
+		accTime += time_between_requests(a,b);
+	}
+	return accTime;
 }
 
 /*Verifica se o tempo do request partindo do índice I e chegando no índice J é respeitado*/
@@ -183,12 +209,7 @@ bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
 	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
-	double accTime =0;
-	for (int k = i; k < j; k++){
-		Request *a = rota->list[k].r;
-		Request *b = rota->list[k+1].r;
-		accTime += time_between_requests(a,b);
-	}
+	double accTime = tempo_gasto_rota(rota, i, j);
 	return accTime <= MTT;
 }
 
@@ -345,6 +366,40 @@ void clean_riders_matches(Graph *g){
 	}
 }
 
+void evaluate_objective_functions(Individuo *idv, Graph *g){
+	double distance = 0;
+	double vehicle_time = 0;
+	double rider_time = 0;
+	double riders_unmatched = g->riders;
+	for (int m = 0; m < idv->size; m++){//pra cada rota
+		Rota *r = &idv->cromossomo[m];
+
+		vehicle_time += tempo_gasto_rota(r, 0, r->length-1);
+		distance += distancia_percorrida(r);
+
+		for (int i = 0; i < r->length-1; i++){//Pra cada um dos sources
+			Service *source = &r->list[i];
+			if (!source->is_source)
+				continue;
+			if (source->r == r->list[0].r)
+				riders_unmatched --;
+			for (int j = i+1; j < r->length; j++){//Repete o for até encontrar o destino
+				Service *destiny = &r->list[j];
+				if(destiny->is_source || source->r != destiny->r || source->r == r->list[0].r)
+					continue;
+
+				rider_time += tempo_gasto_rota(r, i, j);
+				break;
+			}
+		}
+	}
+	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
+	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
+	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
+	idv->objetivos[RIDERS_UNMATCHED] = riders_unmatched;
+
+}
+
 
 /*Inicia a população na memória e então:
  * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
@@ -361,6 +416,7 @@ Population *generate_random_population(int size, Graph *g){
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
 		Individuo *idv = new_individuo(g->drivers, g->riders);
 		p->list[i] = idv;
+		p->size++;
 
 		for (int j = 0; j < g->drivers ; j++){//pra cada uma das rotas
 			Rota * rota = &idv->cromossomo[j];
@@ -391,14 +447,14 @@ Population *generate_random_population(int size, Graph *g){
 				bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
 
 				if (conseguiu){
-					printf("Carona inserido com sucesso!\n");
+					//printf("Carona inserido com sucesso!\n");
 					caronas_inseridos++;
 				}
 
 				if (caronas_inseridos == qtd_caronas_inserir) break;
 			}
 		}
-
+		evaluate_objective_functions(idv, g);
 		clean_riders_matches(g);
 	}
 	return p;

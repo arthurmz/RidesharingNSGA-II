@@ -55,10 +55,12 @@ typedef struct Individuo{
 	//Onde cada rota é uma lista de Services
 	//Cada Service é uma coleta ou entrega(tanto de motorista como de carona)
 	Rota * cromossomo;
+	int size;//tamanho da lista de rotas
 	float objetivos[5];
 
 	int dominated_by_count;//Número de soluções que dominam ind
-	struct Individual **dominates_list;//Conjunto de soluções dominadas por this
+	struct Individuo **dominates_list;//Conjunto de soluções dominadas por this
+	int dominates_list_capacity;
 	int dominates_list_count;//número de soluções dominadas por ind
 	int rank;//Qual front este indivíduo está
 	float crowding_distance;
@@ -100,6 +102,8 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+double distancia_percorrida(Rota * rota);
+void evaluate_objective_functions(Individuo *idv, Graph *g);
 
 
 #endif /* NSGAII_H_ */
