@@ -140,7 +140,7 @@ bool is_dentro_janela_tempo(Rota * rota){
 				return false;
 		}
 	}
-	return false;
+	return true;
 
 }
 /*Verifica se durante toda a rota a carga permanece dentro do limite
@@ -354,8 +354,8 @@ Population *generate_random_population(int size, Graph *g){
 
 	/*TODO inserir sempre os indivíduos sem matchs*/
 	int index_array[g->riders];
-	for (int i = 0; i < g->riders; i++){
-		index_array[i];
+	for (int l = 0; l < g->riders; l++){
+		index_array[l] = l;
 	}
 
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv

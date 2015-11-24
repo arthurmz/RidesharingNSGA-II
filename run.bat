@@ -1,1 +1,1 @@
-.\Debug\RidesharingNSGAII.exe .\instances\RM698_L15.txt 10 100
+.\Debug\RidesharingNSGA-II.exe .\instances\RM698_L15.txt 10 100
