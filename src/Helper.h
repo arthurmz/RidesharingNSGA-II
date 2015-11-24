@@ -25,6 +25,7 @@ double time_between_requests(Request *a, Request *b);
 Graph * parse_file(char *filename);
 void dealoc_graph(Graph*g);
 void dealoc_population(Population *p);
+void shuffle(int *array, int n);
 
 
 #endif /* HELPER_H_ */

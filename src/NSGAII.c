@@ -126,6 +126,88 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 }
 
 
+bool is_dentro_janela_tempo(Rota * rota){
+
+	for (int i = 0; i < rota->length-1; i++){
+		Service *source = &rota->list[i];
+		if (!source->is_source) continue;
+		for (int j = i+1; j < rota->length; j++){
+			Service *destiny = &rota->list[j];
+			if(destiny->is_source || source->r != destiny->r) continue;
+
+			if ( ! ((source->r->pickup_earliest_time <= source->time && source->time <= source->r->pickup_latest_time)
+				&& (destiny->r->delivery_earliest_time <= destiny->time && destiny->time <= destiny->r->delivery_latest_time)))
+				return false;
+		}
+	}
+	return false;
+
+}
+/*Verifica se durante toda a rota a carga permanece dentro do limite
+ * e se todos os passageiros embarcados são desembarcados, terminando com carga 0*/
+bool is_carga_dentro_limite(Rota *rota){
+	int temp_load = 0;
+	for (int i = 1; i < rota->length-1; i++){
+		Service *a = &rota->list[i];
+
+		if(a->is_source){
+			temp_load += RIDER_DEMAND;
+			if (temp_load > VEHICLE_CAPACITY) return false;
+		}
+		else{
+			temp_load -= RIDER_DEMAND;
+			if (temp_load < 0) return false;
+		}
+	}
+
+	if (temp_load != 0) return false;
+	return true;
+}
+
+/*Verifica se a distancia percorrida pelo motorista é respeitada*/
+bool is_distancia_motorista_respeitada(Rota * rota){
+	Service * source = &rota->list[0];
+	Service * destiny = &rota->list[rota->length-1];
+	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
+	double accDistance =0;
+	for (int i = 0; i < rota->length -1; i++){
+		Request *a = rota->list[i].r;
+		Request *b = rota->list[i+1].r;
+		accDistance += haversine(a,b);
+	}
+	return accDistance <= MTD;
+}
+
+/*Verifica se o tempo do request partindo do índice I e chegando no índice J é respeitado*/
+bool is_tempo_respeitado(Rota *rota, int i, int j){
+	Service * source = &rota->list[i];
+	Service * destiny = &rota->list[j];
+	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
+	double accTime =0;
+	for (int k = i; k < j; k++){
+		Request *a = rota->list[k].r;
+		Request *b = rota->list[k+1].r;
+		accTime += time_between_requests(a,b);
+	}
+	return accTime <= MTT;
+}
+
+/*Verifica se os tempos de todos os requests nessa rota estão sendo respeitados*/
+bool is_tempos_respeitados(Rota *rota){
+	for (int i = 0; i < rota->length-1; i++){//Pra cada um dos sources
+		Service *source = &rota->list[i];
+		if (!source->is_source) continue;
+		for (int j = i+1; j < rota->length; j++){//Repete o for até encontrar o destino
+			Service *destiny = &rota->list[j];
+			if(destiny->is_source || source->r != destiny->r) continue;
+
+			if (!is_tempo_respeitado(rota, i, j)) return false;
+		}
+	}
+	return true;
+}
+
+
 /*Restrição 2 e 3 do artigo é garantida pois sempre que um carona é adicionado
  * seu destino tbm é adicionado
  * Restrição 4 é garantida pois ao fazer o match o carona não pode ser usado pra outras inserções
@@ -141,29 +223,13 @@ Graph *new_graph(int drivers, int riders, int total_requests){
  * Restrição 14 é a verificação de tempo do carona*/
 bool is_rota_valida(Rota *rota){
 
-	Service * source = &rota->list[0];
-	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
-	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
+	/*Verificando se os tempos de chegada em cada ponto atende às janelas de tempo de cada request (Driver e Rider)*/
+	bool janela_tempo = is_dentro_janela_tempo(rota);
+	bool carga_dentro_limite = is_carga_dentro_limite(rota);
+	bool tempos_respeitados = is_tempos_respeitados(rota);
+	bool distancia_motorista_respeitada = is_distancia_motorista_respeitada(rota);
 
-	double accDistance =0;
-	for (int i = 0; i < rota->length -1; i++){
-		Request *a = rota->list[i].r;
-		Request *b = rota->list[i+1].r;
-
-		accDistance += haversine(a,b);
-	}
-
-	double accTime = 0;
-	for (int i = 0; i < rota->length -1; i++){
-		Request *a = rota->list[i].r;
-		Request *b = rota->list[i+1].r;
-
-		accTime += time_between_requests(a,b);
-	}
-
-
-	return accDistance <= MTD && accTime <= MTT;
+	return janela_tempo && carga_dentro_limite && tempos_respeitados && distancia_motorista_respeitada;
 }
 
 /*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
@@ -222,10 +288,10 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	rota->list[posicao_insercao+offset].r = carona;
 	rota->list[posicao_insercao+offset].is_source = false;
 
-	update_times(rota);
-
 	rota->length += 2;
 	carona->matched = true;
+
+	update_times(rota);
 
 	if (!is_rota_valida(rota)){
 		desfaz_insercao_carona_rota(rota, carona, posicao_insercao, offset);
@@ -235,7 +301,8 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	return true;
 }
 
-/*Pega carona aleatória não visitada*/
+/*Pega carona aleatória não visitada
+ * Por enquanto não será usado*/
 Request *get_carona_aleatoria(Graph *g){
 	int min = g->drivers;
 	int max = g->riders;
@@ -271,11 +338,25 @@ void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_inserc
 	carona->matched = false;
 }
 
+/*Remove a marcação de matched dos riders*/
+void clean_riders_matches(Graph *g){
+	for (int i = g->drivers; i < g->total_requests; i++){
+		g->request_list[i].matched = false;
+	}
+}
 
+
+/*Inicia a população na memória e então:
+ * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
+ * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
 Population *generate_random_population(int size, Graph *g){
 	Population *p = (Population*) new_empty_population(size);
 
 	/*TODO inserir sempre os indivíduos sem matchs*/
+	int index_array[g->riders];
+	for (int i = 0; i < g->riders; i++){
+		index_array[i];
+	}
 
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
 		Individuo *idv = new_individuo(g->drivers, g->riders);
@@ -298,23 +379,27 @@ Population *generate_random_population(int size, Graph *g){
 			//Insere mais N caronas
 			int qtd_caronas_inserir = rand() % 5;//Outro parâmetro tirado do bolso
 			int caronas_inseridos = 0;
-			int tentativas_restantes = 3;//Quantas vezes vai tentar depois de não dar match
-			while (tentativas_restantes > 0 && caronas_inseridos < qtd_caronas_inserir){
+			shuffle(index_array, g->riders);
+
+			for (int z = 0; z < g->riders; z++){
+				Request * carona = &g->request_list[index_array[z]];
+				if (carona->matched) continue;
+
 				int posicao_inicial = 1 + (rand () % (rota->length-1));
 				int offset = 1;//TODO, variar o offset
-				Request *carona = get_carona_aleatoria(g);
 
-				if (carona == NULL) break;
 				bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
 
-				if (!conseguiu){
-					tentativas_restantes--;
-				}
-				else{
+				if (conseguiu){
+					printf("Carona inserido com sucesso!\n");
 					caronas_inseridos++;
 				}
+
+				if (caronas_inseridos == qtd_caronas_inserir) break;
 			}
 		}
+
+		clean_riders_matches(g);
 	}
 	return p;
 }

@@ -17,7 +17,7 @@ const static double BT = 1.3;//Parte B da equação de tempo máximo (para driver e
 const static double AD = 0;//Parte A da função de distância máxima do driver
 const static double BD = 1.3;//parte B da função de distância máxima do driver
 
-const static double CAPACITY = 5;//Capacidade dos carros
+const static double VEHICLE_CAPACITY = 5;//Capacidade dos carros
 const static double RIDER_DEMAND = 1;//Todos os caronas tem apenas uma pessoa
 
 const static int QTD_OBJECTIVES = 4;
