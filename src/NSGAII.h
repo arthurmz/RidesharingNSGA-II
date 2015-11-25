@@ -26,9 +26,6 @@ typedef struct Request{
 	double pickup_latest_time;
 	double delivery_earliest_time;
 	double delivery_latest_time;
-
-
-
 }Request;
 
 /*Gene of a solution*/
@@ -64,8 +61,14 @@ typedef struct Individuo{
 	int dominates_list_count;//número de soluções dominadas por ind
 	int rank;//Qual front este indivíduo está
 	float crowding_distance;
+
+	//Contador de Referências pra este indivíduo
+	//Mais especificamente, conta a quantidade de referências desse indivíduo por OUTRO indivíduo
+	int ref_count;
 }Individuo;
 
+/*Os indivíduos são armazenados no heap pra
+ * facilitar em alguns aspectos a manipulação do dado.*/
 typedef struct Population{
 	//posição do front (caso essa população seja um front)
 	int id_front;
@@ -96,7 +99,7 @@ Population *generate_random_population(int size, Graph *g);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
-void fast_nondominated_sort(Population *population, Fronts * fronts);
+Fronts * fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *front_i);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
@@ -104,6 +107,6 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
-
+void free_population(Population *population);
 
 #endif /* NSGAII_H_ */

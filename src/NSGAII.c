@@ -48,12 +48,13 @@ void add_dominated(Individuo *b, Individuo *a){
 		if (temp != NULL) b->dominates_list = temp;
 	}
 	b->dominates_list[b->dominates_list_count] = a;
+	a->ref_count++;
 	b->dominates_list_count++;
 
 }
 
 void fast_nondominated_sort(Population *population, Fronts * fronts){
-
+	fronts->size = 0;//Como
 	//Primeiro passo, computando as dominancias
 	for (int i = 0; i < population->size; i++){
 		Individuo *a = population->list[i];
@@ -118,7 +119,25 @@ void crowding_distance_assignment(Population *front_i){
 		}
 
 	}
+}
 
+void sort_by_crowding_distance_assignment(Population *front){
+	crowding_distance_assignment(front);
+	int i, j, max;
+	Individuo *aux;
+	int tam = front->size;
+	for (i = 0; i < (tam-1); i++){
+		max = i;
+		for (j = (i+1); j < tam; j++) {
+			if(front->list[j]->crowding_distance > front->list[max]->crowding_distance)
+			max = j;
+		}
+		if (i != max) {
+			aux = front->list[i];
+			front->list[i] = front->list[max];
+			front->list[max] = aux;
+		}
+	}
 }
 
 bool crowded_comparison_operator(Individuo *a, Individuo *b){

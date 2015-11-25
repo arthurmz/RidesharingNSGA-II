@@ -25,6 +25,16 @@ Fronts* new_front_list(int max_capacity){
 	return f;
 }
 
+void empty_front_list(Fronts * f){
+	int max = f->list[0]->max_capacity;
+	for (int i = 0; i < max; i++){
+		for (int j = 0; j < max; j++){
+			f->list[i]->size = 0;
+			f->list[i]->list[j] = NULL;
+		}
+	}
+}
+
 void clean_front_list(Fronts * f){
 	for (int i = 0; i < f->size; i++){
 		Population *fronti = f->list[i];
@@ -44,7 +54,7 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 	ind->size = drivers_qtd;
 
 	for (int i = 0; i < drivers_qtd; i++){
-		Service * result = calloc(20, sizeof(Service));//Apenas uma estimativa de quanto vai ocupar
+		Service * result = calloc(VEHICLE_CAPACITY+2, sizeof(Service));
 		ind->cromossomo[i].list = result;
 		ind->cromossomo[i].length = 0;
 	}
@@ -175,5 +185,18 @@ void shuffle(int *array, int n) {
 		  array[i] = t;
 		}
     }
+}
+
+
+
+/*Desaloca a população, e todos os seus indivíduos que tem ref_cout = 0*/
+void free_population(Population *population){
+	if (population != NULL){
+		for (int i = 0; i < population->size; i++){
+			if (population->list[i] != NULL)
+				free(population->list[i]);
+		}
+		free(population);
+	}
 }
 

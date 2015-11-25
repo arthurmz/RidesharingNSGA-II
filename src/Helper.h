@@ -26,6 +26,7 @@ Graph * parse_file(char *filename);
 void dealoc_graph(Graph*g);
 void dealoc_population(Population *p);
 void shuffle(int *array, int n);
+void free_unused_population(Population *population);
 
 
 #endif /* HELPER_H_ */
