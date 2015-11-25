@@ -29,5 +29,4 @@ const static int RIDERS_UNMATCHED = 3;
 
 
 
-
 #endif /* STATICVARIABLES_H_ */

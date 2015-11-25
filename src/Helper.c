@@ -6,10 +6,15 @@
  */
 
 #include "Helper.h"
+#include "StaticVariables.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
+/*Aloca um novo Fronts na memória, de tamanho max_capacity
+ * Cada elemento de list é um ponteiro pra uma população que é alocada
+ * Cada população guarda uma lista de ponteiros pros Individuos
+ * Os indivíduos não são alocados*/
 Fronts* new_front_list(int max_capacity){
 	Fronts* f = (Fronts*) calloc(1, sizeof(Fronts));
 	f->size = 0;
@@ -25,6 +30,7 @@ Fronts* new_front_list(int max_capacity){
 	return f;
 }
 
+/*
 void empty_front_list(Fronts * f){
 	int max = f->list[0]->max_capacity;
 	for (int i = 0; i < max; i++){
@@ -33,8 +39,9 @@ void empty_front_list(Fronts * f){
 			f->list[i]->list[j] = NULL;
 		}
 	}
-}
+}*/
 
+/*
 void clean_front_list(Fronts * f){
 	for (int i = 0; i < f->size; i++){
 		Population *fronti = f->list[i];
@@ -45,7 +52,7 @@ void clean_front_list(Fronts * f){
 		}
 	}
 	f->size = 0;
-}
+}*/
 
 /*TESTADO OK*/
 Individuo * new_individuo(int drivers_qtd, int riders_qtd){
@@ -61,6 +68,18 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 	return ind;
 }
 
+void complete_free_individuo(Individuo * idv){
+	if (idv != NULL){
+		for (int i = 0; i < idv->size; i++){
+			free(idv->cromossomo[i].list);
+		}
+		free(idv->cromossomo);
+		free(idv);
+	}
+}
+
+/*Aloca uma nova população de tamanho max_capacity
+ * Cada elemento de list é um ponteiro pra indivíduo NÃO ALOCADO*/
 Population* new_empty_population(int max_capacity){
 	Population *p = (Population*) calloc(1, sizeof(Population));
 	p->max_capacity = max_capacity;
@@ -69,12 +88,22 @@ Population* new_empty_population(int max_capacity){
 	return p;
 }
 
-
-
-
-/*Ordena a população segundo o objetivo k
- * TODO*/
-void sort(Population *front_i, int k){
+void sort(Population *front, int k){
+	int tam = front->size;
+	double min;
+	double aux;
+	for (int i = 0; i < (tam-1); i++){
+		min = i;
+		for (int j = (i+1); j < tam; j++) {
+			if(front->list[j]->objetivos[k] < front->list[min]->objetivos[k])
+			min = j;
+		}
+		if (i != min) {
+			aux = front->list[i];
+			front->list[i] = front->list[min];
+			front->list[min] = aux;
+		}
+	}
 
 }
 
@@ -160,10 +189,7 @@ Graph * parse_file(char *filename){
 	return g;
 }
 
-void dealoc_graph(Graph*g){
-
-}
-
+/*
 void dealoc_population(Population *p){
 	if (p != NULL){
 		if (p->list != NULL){
@@ -172,7 +198,7 @@ void dealoc_population(Population *p){
 		free(p);
 	}
 
-}
+}*/
 
 /*aleatoriza o vetor informado*/
 void shuffle(int *array, int n) {
@@ -189,8 +215,16 @@ void shuffle(int *array, int n) {
 
 
 
-/*Desaloca a população, e todos os seus indivíduos que tem ref_cout = 0*/
+/*Desaloca a população, mantendo os indivíduos alocados*/
 void free_population(Population *population){
+	if (population != NULL){
+		free(population->list);
+		free(population);
+	}
+}
+
+/*Desaloca a população, desalocando também os indivíduos*/
+void complete_free_population(Population *population){
 	if (population != NULL){
 		for (int i = 0; i < population->size; i++){
 			if (population->list[i] != NULL)
@@ -199,4 +233,14 @@ void free_population(Population *population){
 		free(population);
 	}
 }
+
+/*Desaloca a população da memória, sem desalocar o front!!!*/
+void free_population_fronts(Fronts * f){
+	for (int i = 0; i < f->size; f++){
+		complete_free_population(f->list[i]);
+	}
+	free(f->list);
+	free(f);
+}
+
 

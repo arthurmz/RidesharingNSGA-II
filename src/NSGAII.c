@@ -53,6 +53,7 @@ void add_dominated(Individuo *b, Individuo *a){
 
 }
 
+/*Ordena os indivíduos segundo o critério de não dominação*/
 void fast_nondominated_sort(Population *population, Fronts * fronts){
 	fronts->size = 0;//Como
 	//Primeiro passo, computando as dominancias
@@ -485,3 +486,70 @@ Population * generate_offspring(Population *parents){
 
 	return offspring;
 }
+
+
+/*Gera uma população reduzida à partir dos fronts passados
+ * TODO - Cada indivíduo deve ser uma cópia nova que ESQUECE a lista de dominados*/
+Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g){
+	Population *newPopulation = (Population*) new_empty_population(p_size);
+	int added = 0;
+	int lastPosition = 0;
+	for (int i = 0; i < frontsList->size; i++){
+		Population * front_i = frontsList->list[i];
+
+		if (p_size - added >= front_i->size){
+			for (int j = 0; j < front_i->size; j++){
+				Individuo *idv = new_individuo_by_individuo(front_i->list[j], g);
+				newPopulation->list[j] = idv;
+				newPopulation->size++;
+				added++;
+			}
+		}
+		else{
+			lastPosition = i;
+			break;
+		}
+	}
+
+	int restantes = p_size - added;
+	//Só entra aqui se a quantidade de indivíduos no front de posição lastPosition é maior do que o restante à adc
+	if (restantes > 0 && lastPosition < frontsList->size){
+		//Population *front_i = frontsList->list[t];
+		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);
+		for (int k = 0; k < restantes; k++){
+			Individuo *idv = new_individuo_by_individuo(frontsList->list[lastPosition]->list[k], g);
+			newPopulation->list[newPopulation->size] = idv;
+			newPopulation->size++;
+		}
+	}
+
+	return newPopulation;
+
+}
+
+/*Copia o conteúdo das duas populações na terceira.
+ * é uma cópia simples, onde assume-se que os indivíduos estão na heap */
+void merge(Population *p1, Population *p2, Population *big_population){
+	for (int i = 0; i < p1->size + p2->size; i++){
+		if (i < p1->size){
+			big_population->list[i] = p1->list[i];
+		}
+		else{
+			big_population->list[i] = p2->list[i];
+		}
+	}
+	big_population->size = p1->size + p2->size;
+}
+
+
+Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
+	Individuo *idv = new_individuo(g->drivers, g->riders);
+
+	idv->crowding_distance = p->crowding_distance;
+	idv->dominated_by_count = p->dominated_by_count;
+	for (int k = 0; k < QTD_OBJECTIVES; k++){
+		idv->objetivos[k] = p->objetivos[k];
+	}
+	return idv;
+}
+

@@ -99,7 +99,7 @@ Population *generate_random_population(int size, Graph *g);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
-Fronts * fast_nondominated_sort(Population *population, Fronts * fronts);
+void fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *front_i);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
@@ -108,5 +108,12 @@ void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_inserc
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void free_population(Population *population);
+Population * generate_offspring(Population *parents);
+void empty_front_list(Fronts * f);
+void sort_by_crowding_distance_assignment(Population *front);
+Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g);
+Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
+void merge(Population *p1, Population *p2, Population *big_population);
+void complete_free_individuo(Individuo * idv);
 
 #endif /* NSGAII_H_ */
