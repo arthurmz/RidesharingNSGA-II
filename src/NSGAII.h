@@ -104,7 +104,8 @@ void crowding_distance_assignment(Population *front_i);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
-void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+//void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
@@ -116,5 +117,7 @@ Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g)
 Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
+void repair(Individuo *offspring, Graph *g);
+void mutation(Individuo *ind, Graph *g);
 
 #endif /* NSGAII_H_ */

@@ -43,17 +43,26 @@ int main(int argc,  char** argv){
 
 	int i = 0;
 	while(i < 100){
+		printf("número de repetições %d\n", i);
 		Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
+		printf("chegou aqui", i);
 		merge(parents, offspring, big_population);
 		fast_nondominated_sort(big_population, frontsList);
 		free_population(parents);
 		free_population(offspring);
 
+		printf("chegou aqui 2\n", i);
+
 		Population * next_parents = select_reduced_population(frontsList, POPULATION_SIZE, g);
+		printf("chegou aqui b\n", i);
 		free_population_fronts(frontsList);//Desaloca as populações, incluindo seus indivíduos e o front!
+		printf("chegou aqui cc \n");
 		parents = next_parents;
+		printf("chegou aqui a\n", i);
 		offspring = generate_offspring(parents, g, crossoverProbability);
+		printf("chegou aqui 3\n", i);
+		i++;
 	}
 
 	//complete_free_population(parents);

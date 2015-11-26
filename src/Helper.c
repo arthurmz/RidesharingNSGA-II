@@ -71,9 +71,11 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 void complete_free_individuo(Individuo * idv){
 	if (idv != NULL){
 		for (int i = 0; i < idv->size; i++){
-			free(idv->cromossomo[i].list);
+			if (idv->cromossomo != NULL && idv->cromossomo[i].list != NULL)
+				free(idv->cromossomo[i].list);
 		}
-		free(idv->cromossomo);
+		if (idv->cromossomo != NULL)
+			free(idv->cromossomo);
 		free(idv);
 	}
 }
@@ -199,7 +201,8 @@ void shuffle(int *array, int n) {
 /*Desaloca a população, mantendo os indivíduos alocados*/
 void free_population(Population *population){
 	if (population != NULL){
-		free(population->list);
+		if (population->list != NULL)
+			free(population->list);
 		free(population);
 	}
 }
@@ -217,11 +220,15 @@ void complete_free_population(Population *population){
 
 /*Desaloca a população da memória, sem desalocar o front!!!*/
 void free_population_fronts(Fronts * f){
-	for (int i = 0; i < f->size; f++){
-		complete_free_population(f->list[i]);
+	if (f != NULL){
+		for (int i = 0; i < f->size; f++){
+			if (f->list[i] != NULL)
+				complete_free_population(f->list[i]);
+		}
+		if (f->list != NULL)
+			free(f->list);
+		free(f);
 	}
-	free(f->list);
-	free(f);
 }
 
 

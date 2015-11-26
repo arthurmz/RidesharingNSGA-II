@@ -411,7 +411,8 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	update_times(rota);
 
 	if (!is_rota_valida(rota)){
-		desfaz_insercao_carona_rota(rota, carona, posicao_insercao, offset);
+		desfaz_insercao_carona_rota(rota, posicao_insercao, offset);
+		carona->matched = false;
 		update_times(rota);
 		return false;
 	}
@@ -440,7 +441,7 @@ Request *get_carona_aleatoria(Graph *g){
 	return carona;
 }
 
-void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset){
+void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
 	if (posicao_insercao <= 0 || offset <= 0) return;
 
 	for (int i = posicao_insercao; i < rota->length-1; i++){
@@ -452,7 +453,6 @@ void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_inserc
 		rota->list[i] = rota->list[i+1];
 	}
 	rota->length--;
-	carona->matched = false;
 }
 
 /*Remove a marcação de matched dos riders*/
@@ -539,11 +539,13 @@ Population *generate_random_population(int size, Graph *g){
 			//Insere mais N caronas
 			int qtd_caronas_inserir = rand() % 5;//Outro parâmetro tirado do bolso
 			int caronas_inseridos = 0;
+			int tentativas_restantes = 12;
 			shuffle(index_array, g->riders);
 
 			for (int z = 0; z < g->riders; z++){
 				Request * carona = &g->request_list[index_array[z]];
 				if (carona->matched) continue;
+				if (qtd_caronas_inserir == 0 || tentativas_restantes == 0) break;
 
 				int posicao_inicial = 1 + (rand () % (rota->length-1));
 				int offset = 1;//TODO, variar o offset
@@ -553,6 +555,9 @@ Population *generate_random_population(int size, Graph *g){
 				if (conseguiu){
 					//printf("Carona inserido com sucesso!\n");
 					caronas_inseridos++;
+				}
+				else{
+					tentativas_restantes--;
 				}
 
 				if (caronas_inseridos == qtd_caronas_inserir) break;
@@ -612,7 +617,7 @@ void merge(Population *p1, Population *p2, Population *big_population){
 			big_population->list[i] = p1->list[i];
 		}
 		else{
-			big_population->list[i] = p2->list[i];
+			big_population->list[i] = p2->list[i - p1->size];
 		}
 	}
 	big_population->size = p1->size + p2->size;
@@ -661,6 +666,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring1->cromossomo[i].list[j].time = r.list[j].time;
 				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring1->cromossomo[i].length = parent2->cromossomo[i].length;
 		}
 		for (i = crossoverPoint; i < rotaSize; i++){
 			Rota r = parent1->cromossomo[i];
@@ -670,6 +676,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring1->cromossomo[i].list[j].time = r.list[j].time;
 				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
 		}
 		for (i = 0; i < crossoverPoint; i++){
 			Rota r = parent1->cromossomo[i];
@@ -680,6 +687,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring2->cromossomo[i].list[j].time = r.list[j].time;
 				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring2->cromossomo[i].length = parent1->cromossomo[i].length;
 		}
 		for (i = crossoverPoint; i < rotaSize; i++){
 			Rota r = parent2->cromossomo[i];
@@ -689,20 +697,22 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring2->cromossomo[i].list[j].time = r.list[j].time;
 				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;
 		}
 
 	}
 	else{
 		int i = 0;
 		for (i = 0; i < crossoverPoint; i++){
-			Rota r = parent1->cromossomo[i];
+			Rota r = parent2->cromossomo[i];
 			//Copiando os services da rota
-			for (int j = 0; j < parent1->cromossomo[i].length; j++){
+			for (int j = 0; j < parent2->cromossomo[i].length; j++){
 				offspring1->cromossomo[i].list[j].r = r.list[j].r;
 				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
 				offspring1->cromossomo[i].list[j].time = r.list[j].time;
 				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring1->cromossomo[i].length = parent2->cromossomo[i].length;
 		}
 		for (i = crossoverPoint; i < rotaSize; i++){
 			Rota r = parent1->cromossomo[i];
@@ -712,16 +722,18 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring1->cromossomo[i].list[j].time = r.list[j].time;
 				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
 		}
 		for (i = 0; i < crossoverPoint; i++){
-			Rota r = parent2->cromossomo[i];
+			Rota r = parent1->cromossomo[i];
 			//Copiando os services da rota
-			for (int j = 0; j < parent2->cromossomo[i].length; j++){
+			for (int j = 0; j < parent1->cromossomo[i].length; j++){
 				offspring2->cromossomo[i].list[j].r = r.list[j].r;
 				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
 				offspring2->cromossomo[i].list[j].time = r.list[j].time;
 				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
 			}
+			offspring2->cromossomo[i].length = parent1->cromossomo[i].length;
 		}
 		for (i = crossoverPoint; i < rotaSize; i++){
 			Rota r = parent2->cromossomo[i];
@@ -730,9 +742,36 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
 				offspring2->cromossomo[i].list[j].time = r.list[j].time;
 				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;
+		}
+	}
+}
+
+/*Remove todas as caronas que quebram a validação
+ * Tenta inserir novas
+ * Utiliza graph pra saber quem já fez match.
+ * Tem que chamar o clean_matches depois*/
+void repair(Individuo *offspring, Graph *g){
+	for (int i = 0; i < offspring->size; i++){
+		Rota *rota = &offspring->cromossomo[i];
+
+		for (int j = 0; j < rota->length; j++){
+			if (rota->list[j].r->matched){
+				int offset = 1;
+				for (int k = j+1; k < rota->length; k++){//encontrando o offset
+					if (rota->list[j].r == rota->list[k].r && !rota->list[k].is_source)
+						break;
+					offset++;
+				}
+				desfaz_insercao_carona_rota(rota, j, offset);
 			}
 		}
 	}
+}
+
+void mutation(Individuo *ind, Graph *g){
+
 }
 
 
@@ -741,13 +780,27 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 Population * generate_offspring(Population *parents, Graph *g, float crossoverProbability ){
 	Population *offspring = (Population*) new_empty_population(parents->size);
 
-	Individuo *parent1 = tournamentSelection(parents);
-	Individuo *parent2 = tournamentSelection(parents);
 
-	Individuo *offspring1 = new_individuo(g->drivers, g->riders);
-	Individuo *offspring2 = new_individuo(g->drivers, g->riders);
+	while (offspring->size < parents->size){
+		Individuo *parent1 = tournamentSelection(parents);
+		Individuo *parent2 = tournamentSelection(parents);
 
-	crossover(parent1, parent2, offspring1, offspring2, crossoverProbability);
+		Individuo *offspring1 = new_individuo(g->drivers, g->riders);
+		Individuo *offspring2 = new_individuo(g->drivers, g->riders);
+
+		crossover(parent1, parent2, offspring1, offspring2, crossoverProbability);
+
+		repair(offspring1, g);
+		repair(offspring2, g);
+
+		mutation(offspring1, g);
+		mutation(offspring2, g);
+
+		offspring->list[offspring->size++] = offspring1;
+		if (offspring->size < parents->size)
+			offspring->list[offspring->size++] = offspring2;
+
+	}
 
 
 	return offspring;
