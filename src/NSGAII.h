@@ -107,8 +107,9 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
+void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);
-Population * generate_offspring(Population *parents);
+Population * generate_offspring(Population *parents, Graph *g, float crossoverProbability);
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
 Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g);

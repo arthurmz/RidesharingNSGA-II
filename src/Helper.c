@@ -88,25 +88,6 @@ Population* new_empty_population(int max_capacity){
 	return p;
 }
 
-void sort(Population *front, int k){
-	int tam = front->size;
-	double min;
-	double aux;
-	for (int i = 0; i < (tam-1); i++){
-		min = i;
-		for (int j = (i+1); j < tam; j++) {
-			if(front->list[j]->objetivos[k] < front->list[min]->objetivos[k])
-			min = j;
-		}
-		if (i != min) {
-			aux = front->list[i];
-			front->list[i] = front->list[min];
-			front->list[min] = aux;
-		}
-	}
-
-}
-
 /*Distância em km*/
 double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 	double R = 6372.8;

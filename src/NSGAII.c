@@ -98,47 +98,123 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 	}
 }
 
-/**/
+/*Pra poder usar a função qsort com N objetivos,
+ * precisamos implementar os n algoritmos de compare*/
+int compare0(const void *p, const void *q) {
+    int ret;
+    Individuo * x = (const Individuo *)p;
+    Individuo * y = (const Individuo *)q;
+    if (x->objetivos[0] == y->objetivos[0])
+        ret = 0;
+    else if (x->objetivos[0] < y->objetivos[0])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+int compare1(const void *p, const void *q) {
+    int ret;
+    Individuo * x = (const Individuo *)p;
+    Individuo * y = (const Individuo *)q;
+    if (x->objetivos[1] == y->objetivos[1])
+        ret = 0;
+    else if (x->objetivos[1] < y->objetivos[1])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+int compare2(const void *p, const void *q) {
+    int ret;
+    Individuo * x = (const Individuo *)p;
+    Individuo * y = (const Individuo *)q;
+    if (x->objetivos[2] == y->objetivos[2])
+        ret = 0;
+    else if (x->objetivos[2] < y->objetivos[2])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+int compare3(const void *p, const void *q) {
+    int ret;
+    Individuo * x = (const Individuo *)p;
+    Individuo * y = (const Individuo *)q;
+    if (x->objetivos[3] == y->objetivos[3])
+        ret = 0;
+    else if (x->objetivos[3] < y->objetivos[3])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+
+
+
+
+/*Deve ser chamado depois de determinar as funções objetivo*/
 void crowding_distance_assignment(Population *front_i){
 	for (int i = 0; i < front_i->size; i++){
 		front_i->list[i]->crowding_distance = 0;
 	}
 	for (int k = 0; k < QTD_OBJECTIVES; k++){
-		sort(front_i, k);
+		switch(k){
+		case 0:
+			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare0 );
+			break;
+		case 1:
+			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare1 );
+			break;
+		case 2:
+			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare2 );
+			break;
+		case 3:
+			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare3 );
+			break;
+		}
 
 		front_i->list[0]->crowding_distance = INT_MAX;
 		front_i->list[front_i->size -1]->crowding_distance = INT_MAX;
 
-		float fmax = front_i->list[0]->objetivos[k];//valor max do obj k
-		float fmin = front_i->list[front_i->size -1]->objetivos[k];//valor min do obj k
+		float obj_min = front_i->list[0]->objetivos[k];//valor max do obj k
+		float obj_max = front_i->list[front_i->size -1]->objetivos[k];//valor min do obj k
+
+
+		float diff = fmax(0.001, abs(obj_max - obj_min));
 
 
 		for (int z = 1; z < front_i->size -1; z++){
 			float prox_obj = front_i->list[z+1]->objetivos[k];
 			float ant_obj = front_i->list[z-1]->objetivos[k];
-			front_i->list[z]->crowding_distance += (prox_obj - ant_obj) / (fmax-fmin);
+
+			front_i->list[z]->crowding_distance += abs(prox_obj - ant_obj) / diff;
 		}
 
 	}
 }
 
+/*Pra poder usar a função qsort com N objetivos,
+ * precisamos implementar os n algoritmos de compare*/
+int compareByCrowdingDistanceMax(const void *p, const void *q) {
+    int ret;
+    Individuo * x = (const Individuo *)p;
+    Individuo * y = (const Individuo *)q;
+    if (x->crowding_distance == y->crowding_distance)
+        ret = 0;
+    else if (x->crowding_distance > y->crowding_distance)
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
 void sort_by_crowding_distance_assignment(Population *front){
 	crowding_distance_assignment(front);
-	int i, j, max;
-	Individuo *aux;
-	int tam = front->size;
-	for (i = 0; i < (tam-1); i++){
-		max = i;
-		for (j = (i+1); j < tam; j++) {
-			if(front->list[j]->crowding_distance > front->list[max]->crowding_distance)
-			max = j;
-		}
-		if (i != max) {
-			aux = front->list[i];
-			front->list[i] = front->list[max];
-			front->list[max] = aux;
-		}
-	}
+	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
 }
 
 bool crowded_comparison_operator(Individuo *a, Individuo *b){
@@ -386,6 +462,13 @@ void clean_riders_matches(Graph *g){
 	}
 }
 
+void evaluate_objective_functions_pop(Population* p, Graph *g){
+	for (int i = 0; i < p->size; i++){
+		evaluate_objective_functions(p->list[i], g);
+	}
+	crowding_distance_assignment(p);
+}
+
 void evaluate_objective_functions(Individuo *idv, Graph *g){
 	double distance = 0;
 	double vehicle_time = 0;
@@ -413,6 +496,7 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 			}
 		}
 	}
+
 	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
 	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
 	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
@@ -474,18 +558,11 @@ Population *generate_random_population(int size, Graph *g){
 				if (caronas_inseridos == qtd_caronas_inserir) break;
 			}
 		}
-		evaluate_objective_functions(idv, g);
 		clean_riders_matches(g);
 	}
 	return p;
 }
 
-/*Gera uma população de filhos, usando seleção, crossover e mutação*/
-Population * generate_offspring(Population *parents){
-	Population *offspring = (Population*) new_empty_population(parents->size);
-
-	return offspring;
-}
 
 
 /*Gera uma população reduzida à partir dos fronts passados
@@ -551,5 +628,128 @@ Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
 		idv->objetivos[k] = p->objetivos[k];
 	}
 	return idv;
+}
+
+/*seleção por torneio, k = 2*/
+Individuo * tournamentSelection(Population * parents){
+	Individuo * best = NULL;
+	for (int i = 0; i < 2; i++){
+		int pos = rand() % parents->size;
+		Individuo * outro = parents->list[pos];
+		if (best == NULL || crowded_comparison_operator(outro, best))
+			best = outro;
+	}
+	return best;
+}
+
+void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, float crossoverProbability){
+	int rotaSize = parent1->size;
+	offspring1->size = rotaSize;
+	offspring2->size = rotaSize;
+
+	int crossoverPoint = 1 + (rand() % (rotaSize-1));
+	float accept = (float)rand() / RAND_MAX;
+
+	if (accept < crossoverProbability){
+		int i = 0;
+		for (i = 0; i < crossoverPoint; i++){
+			Rota r = parent2->cromossomo[i];
+			//Copiando os services da rota
+			for (int j = 0; j < parent2->cromossomo[i].length; j++){
+				offspring1->cromossomo[i].list[j].r = r.list[j].r;
+				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring1->cromossomo[i].list[j].time = r.list[j].time;
+				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = crossoverPoint; i < rotaSize; i++){
+			Rota r = parent1->cromossomo[i];
+			for (int j = 0; j < parent1->cromossomo[i].length; j++){
+				offspring1->cromossomo[i].list[j].r = r.list[j].r;
+				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring1->cromossomo[i].list[j].time = r.list[j].time;
+				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = 0; i < crossoverPoint; i++){
+			Rota r = parent1->cromossomo[i];
+			//Copiando os services da rota
+			for (int j = 0; j < parent1->cromossomo[i].length; j++){
+				offspring2->cromossomo[i].list[j].r = r.list[j].r;
+				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring2->cromossomo[i].list[j].time = r.list[j].time;
+				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = crossoverPoint; i < rotaSize; i++){
+			Rota r = parent2->cromossomo[i];
+			for (int j = 0; j < parent2->cromossomo[i].length; j++){
+				offspring2->cromossomo[i].list[j].r = r.list[j].r;
+				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring2->cromossomo[i].list[j].time = r.list[j].time;
+				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+
+	}
+	else{
+		int i = 0;
+		for (i = 0; i < crossoverPoint; i++){
+			Rota r = parent1->cromossomo[i];
+			//Copiando os services da rota
+			for (int j = 0; j < parent1->cromossomo[i].length; j++){
+				offspring1->cromossomo[i].list[j].r = r.list[j].r;
+				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring1->cromossomo[i].list[j].time = r.list[j].time;
+				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = crossoverPoint; i < rotaSize; i++){
+			Rota r = parent1->cromossomo[i];
+			for (int j = 0; j < parent1->cromossomo[i].length; j++){
+				offspring1->cromossomo[i].list[j].r = r.list[j].r;
+				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring1->cromossomo[i].list[j].time = r.list[j].time;
+				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = 0; i < crossoverPoint; i++){
+			Rota r = parent2->cromossomo[i];
+			//Copiando os services da rota
+			for (int j = 0; j < parent2->cromossomo[i].length; j++){
+				offspring2->cromossomo[i].list[j].r = r.list[j].r;
+				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring2->cromossomo[i].list[j].time = r.list[j].time;
+				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+		for (i = crossoverPoint; i < rotaSize; i++){
+			Rota r = parent2->cromossomo[i];
+			for (int j = 0; j < parent2->cromossomo[i].length; j++){
+				offspring2->cromossomo[i].list[j].r = r.list[j].r;
+				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
+				offspring2->cromossomo[i].list[j].time = r.list[j].time;
+				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
+			}
+		}
+	}
+}
+
+
+
+/*Gera uma população de filhos, usando seleção, crossover e mutação*/
+Population * generate_offspring(Population *parents, Graph *g, float crossoverProbability ){
+	Population *offspring = (Population*) new_empty_population(parents->size);
+
+	Individuo *parent1 = tournamentSelection(parents);
+	Individuo *parent2 = tournamentSelection(parents);
+
+	Individuo *offspring1 = new_individuo(g->drivers, g->riders);
+	Individuo *offspring2 = new_individuo(g->drivers, g->riders);
+
+	crossover(parent1, parent2, offspring1, offspring2, crossoverProbability);
+
+
+	return offspring;
 }
 

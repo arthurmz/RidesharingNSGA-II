@@ -27,6 +27,7 @@ int main(int argc,  char** argv){
 	//Parametros (variáveis)
 	int POPULATION_SIZE;
 	int ITERATIONS;
+	float crossoverProbability = 0.75;
 	char *filename = argv[1];
 
 	sscanf(argv[2], "%d", &POPULATION_SIZE);
@@ -37,7 +38,8 @@ int main(int argc,  char** argv){
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
 
 	Population * parents = generate_random_population(POPULATION_SIZE, g);
-	Population * offspring = generate_offspring(parents);//Tem que garantir que os indivíduos dessa população são diferentes
+	evaluate_objective_functions_pop(parents, g);
+	Population * offspring = generate_offspring(parents, g, crossoverProbability);//Tem que garantir que os indivíduos dessa população são diferentes
 
 	int i = 0;
 	while(i < 100){
@@ -51,10 +53,10 @@ int main(int argc,  char** argv){
 		Population * next_parents = select_reduced_population(frontsList, POPULATION_SIZE, g);
 		free_population_fronts(frontsList);//Desaloca as populações, incluindo seus indivíduos e o front!
 		parents = next_parents;
-		offspring = generate_offspring(parents);
+		offspring = generate_offspring(parents, g, crossoverProbability);
 	}
 
-	complete_free_population(parents);
+	//complete_free_population(parents);
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;
 }
