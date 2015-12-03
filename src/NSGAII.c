@@ -465,6 +465,7 @@ void clean_riders_matches(Graph *g){
 void evaluate_objective_functions_pop(Population* p, Graph *g){
 	for (int i = 0; i < p->size; i++){
 		evaluate_objective_functions(p->list[i], g);
+		clean_riders_matches(g);
 	}
 	crowding_distance_assignment(p);
 }
@@ -570,21 +571,25 @@ Population *generate_random_population(int size, Graph *g){
 
 
 
-/*Gera uma população reduzida à partir dos fronts passados
- * TODO - Cada indivíduo deve ser uma cópia nova que ESQUECE a lista de dominados*/
-Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g){
-	Population *newPopulation = (Population*) new_empty_population(p_size);
+/*Pega os melhores N indivíduos do frontList e joga na população pai.
+ * Os restantes vão pra população filho.
+ * Remove da lista de pais e filhos as listas de dominação
+ * Zera o tamanho do frontsList
+ * */
+void select_reduced_population(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
+
 	int added = 0;
 	int lastPosition = 0;
+
+	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
+	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
+	 * o restante desse front em lastPosition e dos próximos fronts vão pro offsprings*/
 	for (int i = 0; i < frontsList->size; i++){
 		Population * front_i = frontsList->list[i];
 
-		if (p_size - added >= front_i->size){
+		if (parents->size - added >= front_i->size){
 			for (int j = 0; j < front_i->size; j++){
-				Individuo *idv = new_individuo_by_individuo(front_i->list[j], g);
-				newPopulation->list[j] = idv;
-				newPopulation->size++;
-				added++;
+				parents->list[added++] = front_i->list[j];
 			}
 		}
 		else{
@@ -593,20 +598,37 @@ Population * select_reduced_population(Fronts *frontsList, int p_size, Graph *g)
 		}
 	}
 
-	int restantes = p_size - added;
-	//Só entra aqui se a quantidade de indivíduos no front de posição lastPosition é maior do que o restante à adc
-	if (restantes > 0 && lastPosition < frontsList->size){
-		//Population *front_i = frontsList->list[t];
-		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);
-		for (int k = 0; k < restantes; k++){
-			Individuo *idv = new_individuo_by_individuo(frontsList->list[lastPosition]->list[k], g);
-			newPopulation->list[newPopulation->size] = idv;
-			newPopulation->size++;
+	int offspringAdded = 0;
+
+	int restantes_adicionar = parents->size - added;//Qtd que tem que adicionar aos pais
+
+	//Se restantes_adicionar > 0 então o front atual não comporta todos os elementos de parent
+	if (restantes_adicionar > 0 && lastPosition < frontsList->size){
+		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
+		for (int k = 0; k < restantes_adicionar; k++){
+			parents->list[added++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
+		}
+		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
+		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
+			offsprings->list[offspringAdded++] = frontsList->list[lastPosition]->list[k];
+		}
+		lastPosition++;
+	}
+
+
+	/*Adicionar todos os restantes de bigpopulation aos filhos*/
+	while (lastPosition < frontsList->size){
+		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
+			offsprings->list[offspringAdded++] = frontsList->list[lastPosition++]->list[k];
 		}
 	}
 
-	return newPopulation;
 
+	/*====================Zerando o frontlist==================================*/
+	for (int i = 0; i < frontsList->size; i++){
+		frontsList->list[i]->size = 0;
+	}
+	frontsList->size = 0;
 }
 
 /*Copia o conteúdo das duas populações na terceira.
@@ -632,6 +654,18 @@ Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
 	for (int k = 0; k < QTD_OBJECTIVES; k++){
 		idv->objetivos[k] = p->objetivos[k];
 	}
+	for (int r = 0; r < p->size; r++){
+		idv->cromossomo[r].length = p->cromossomo[r].length;
+		for (int w = 0; w < p->cromossomo[r].length; w++){
+			idv->cromossomo[r].list[w].is_source = p->cromossomo[r].list[w].is_source;
+			idv->cromossomo[r].list[w].r = p->cromossomo[r].list[w].r;
+			idv->cromossomo[r].list[w].time = p->cromossomo[r].list[w].time;
+			idv->cromossomo[r].list[w].waiting_time = p->cromossomo[r].list[w].waiting_time;
+		}
+	}
+
+	idv->size = p->size;
+
 	return idv;
 }
 
@@ -777,16 +811,15 @@ void mutation(Individuo *ind, Graph *g){
 
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
-Population * generate_offspring(Population *parents, Graph *g, float crossoverProbability ){
-	Population *offspring = (Population*) new_empty_population(parents->size);
-
-
+void generate_offspring(Population *parents, Population *offspring,  Graph *g, float crossoverProbability ){
+	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
+	int i = 0;
 	while (offspring->size < parents->size){
 		Individuo *parent1 = tournamentSelection(parents);
 		Individuo *parent2 = tournamentSelection(parents);
 
-		Individuo *offspring1 = new_individuo(g->drivers, g->riders);
-		Individuo *offspring2 = new_individuo(g->drivers, g->riders);
+		Individuo *offspring1 = offspring->list[i++];
+		Individuo *offspring2 = offspring->list[i];
 
 		crossover(parent1, parent2, offspring1, offspring2, crossoverProbability);
 
@@ -795,14 +828,7 @@ Population * generate_offspring(Population *parents, Graph *g, float crossoverPr
 
 		mutation(offspring1, g);
 		mutation(offspring2, g);
-
-		offspring->list[offspring->size++] = offspring1;
-		if (offspring->size < parents->size)
-			offspring->list[offspring->size++] = offspring2;
-
+		offspring->size += 2;
 	}
-
-
-	return offspring;
 }
 

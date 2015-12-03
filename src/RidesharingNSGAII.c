@@ -15,9 +15,20 @@
 #include "NSGAII.h"
 
 
+void save_to_file(Fronts * f){
+	Population * fronteira = f->list[0];
+	for (int i = 0; i < fronteira->size; i++){
+		Individuo *id = fronteira->list[i];
+		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
+	}
+}
 
-
-/*Parametros: nome do arquivo*/
+/*Parametros: nome do arquivo
+ *
+ * Inicia com 3 populações
+ * Pais - Indivíduos alocados
+ * Filhos -Indivíduos alocados
+ * Big_population - indivíduos NÃO alocados*/
 int main(int argc,  char** argv){
 	if (argc < 4) {
 		printf("Argumentos insuficientes\n");
@@ -36,34 +47,29 @@ int main(int argc,  char** argv){
 	if (g == NULL) return 0;
 
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
+	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
 	Population * parents = generate_random_population(POPULATION_SIZE, g);
+	Population * offspring = generate_random_population(POPULATION_SIZE, g);
 	evaluate_objective_functions_pop(parents, g);
-	Population * offspring = generate_offspring(parents, g, crossoverProbability);//Tem que garantir que os indivíduos dessa população são diferentes
 
 	int i = 0;
-	while(i < 100){
+	while(i < 5){
 		printf("número de repetições %d\n", i);
-		Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
-		printf("chegou aqui", i);
 		merge(parents, offspring, big_population);
 		fast_nondominated_sort(big_population, frontsList);
-		free_population(parents);
-		free_population(offspring);
 
-		printf("chegou aqui 2\n", i);
-
-		Population * next_parents = select_reduced_population(frontsList, POPULATION_SIZE, g);
-		printf("chegou aqui b\n", i);
-		free_population_fronts(frontsList);//Desaloca as populações, incluindo seus indivíduos e o front!
-		printf("chegou aqui cc \n");
-		parents = next_parents;
-		printf("chegou aqui a\n", i);
-		offspring = generate_offspring(parents, g, crossoverProbability);
-		printf("chegou aqui 3\n", i);
+		select_reduced_population(frontsList, parents, offspring, g);
+		generate_offspring(parents, offspring, g, crossoverProbability);
 		i++;
 	}
+
+	merge(parents, offspring, big_population);
+	fast_nondominated_sort(big_population, frontsList);
+	evaluate_objective_functions_pop(frontsList->list[0], g);
+	save_to_file(frontsList);
+
 
 	//complete_free_population(parents);
 	//dealoc_graph(g);

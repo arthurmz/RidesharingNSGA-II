@@ -8,7 +8,7 @@
 #include "NSGAII.h"
 
 int mainbak(){
-	Individuo * k = new_individuo(250,100);
+	//Individuo * k = new_individuo(250,100);
 
 	return 0;
 

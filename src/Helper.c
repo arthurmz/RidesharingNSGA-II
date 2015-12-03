@@ -214,7 +214,8 @@ void complete_free_population(Population *population){
 			if (population->list[i] != NULL)
 				free(population->list[i]);
 		}
-		free(population);
+		//free(population->list); para evitar os crashes
+		//free(population);
 	}
 }
 
@@ -225,9 +226,10 @@ void free_population_fronts(Fronts * f){
 			if (f->list[i] != NULL)
 				complete_free_population(f->list[i]);
 		}
-		if (f->list != NULL)
-			free(f->list);
-		free(f);
+		//if (f->list != NULL && f->list != 0xabababab)
+			//free(f->list);
+		if (f != NULL)
+			free(f);
 	}
 }
 
