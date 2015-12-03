@@ -53,7 +53,8 @@ void add_dominated(Individuo *b, Individuo *a){
 
 }
 
-/*Ordena os indivíduos segundo o critério de não dominação*/
+/*Ordena os indivíduos segundo o critério de não dominação
+ * "Esvazia" o population*/
 void fast_nondominated_sort(Population *population, Fronts * fronts){
 	fronts->size = 0;//Como
 	//Primeiro passo, computando as dominancias
@@ -96,6 +97,8 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		}
 		index_front++;
 	}
+
+	population->size = 0;//Zera o bigpopulation
 }
 
 /*Pra poder usar a função qsort com N objetivos,
@@ -574,11 +577,10 @@ Population *generate_random_population(int size, Graph *g){
 /*Pega os melhores N indivíduos do frontList e joga na população pai.
  * Os restantes vão pra população filho.
  * Remove da lista de pais e filhos as listas de dominação
- * Zera o tamanho do frontsList
+ * "esvazia" o frontsList
  * */
 void select_reduced_population(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
 
-	int added = 0;
 	int lastPosition = 0;
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
@@ -586,31 +588,30 @@ void select_reduced_population(Fronts *frontsList, Population *parents, Populati
 	 * o restante desse front em lastPosition e dos próximos fronts vão pro offsprings*/
 	for (int i = 0; i < frontsList->size; i++){
 		Population * front_i = frontsList->list[i];
-
-		if (parents->size - added >= front_i->size){
+		lastPosition = i;
+		if (parents->max_capacity - parents->size >= front_i->size){
 			for (int j = 0; j < front_i->size; j++){
-				parents->list[added++] = front_i->list[j];
+				parents->list[parents->size++] = front_i->list[j];
 			}
 		}
 		else{
-			lastPosition = i;
 			break;
 		}
 	}
 
-	int offspringAdded = 0;
+	//int offspringAdded = 0;
 
-	int restantes_adicionar = parents->size - added;//Qtd que tem que adicionar aos pais
+	int restantes_adicionar = parents->max_capacity - parents->size;//Qtd que tem que adicionar aos pais
 
 	//Se restantes_adicionar > 0 então o front atual não comporta todos os elementos de parent
-	if (restantes_adicionar > 0 && lastPosition < frontsList->size){
+	if (restantes_adicionar > 0){
 		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
 		for (int k = 0; k < restantes_adicionar; k++){
-			parents->list[added++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
+			parents->list[parents->size++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
 		}
 		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
 		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
-			offsprings->list[offspringAdded++] = frontsList->list[lastPosition]->list[k];
+			offsprings->list[offsprings->size++] = frontsList->list[lastPosition]->list[k];
 		}
 		lastPosition++;
 	}
@@ -618,8 +619,8 @@ void select_reduced_population(Fronts *frontsList, Population *parents, Populati
 
 	/*Adicionar todos os restantes de bigpopulation aos filhos*/
 	while (lastPosition < frontsList->size){
-		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
-			offsprings->list[offspringAdded++] = frontsList->list[lastPosition++]->list[k];
+		for (int k = 0; k < frontsList->list[lastPosition]->size; k++){
+			offsprings->list[offsprings->size++] = frontsList->list[lastPosition++]->list[k];
 		}
 	}
 
@@ -632,7 +633,8 @@ void select_reduced_population(Fronts *frontsList, Population *parents, Populati
 }
 
 /*Copia o conteúdo das duas populações na terceira.
- * é uma cópia simples, onde assume-se que os indivíduos estão na heap */
+ * é uma cópia simples, onde assume-se que os indivíduos estão na heap
+ * "esvazia" p1 e p2*/
 void merge(Population *p1, Population *p2, Population *big_population){
 	for (int i = 0; i < p1->size + p2->size; i++){
 		if (i < p1->size){
@@ -643,6 +645,8 @@ void merge(Population *p1, Population *p2, Population *big_population){
 		}
 	}
 	big_population->size = p1->size + p2->size;
+	p1->size = 0;
+	p2->size = 0;
 }
 
 

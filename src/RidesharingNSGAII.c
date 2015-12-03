@@ -54,7 +54,7 @@ int main(int argc,  char** argv){
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;
-	while(i < 5){
+	while(i < ITERATIONS){
 		printf("número de repetições %d\n", i);
 
 		merge(parents, offspring, big_population);
