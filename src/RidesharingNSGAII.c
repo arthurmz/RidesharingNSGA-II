@@ -52,17 +52,18 @@ int main(int argc,  char** argv){
 	Population * parents = generate_random_population(POPULATION_SIZE, g);
 	Population * offspring = generate_random_population(POPULATION_SIZE, g);
 	evaluate_objective_functions_pop(parents, g);
+	fast_nondominated_sort(parents, frontsList);
+	select_reduced_population(frontsList, parents, offspring, g);
+	generate_offspring(parents, offspring, g, crossoverProbability);
 
 	int i = 0;
 	while(i < ITERATIONS){
-		printf("número de repetições %d\n", i);
-
+		evaluate_objective_functions_pop(offspring, g);
 		merge(parents, offspring, big_population);
 		fast_nondominated_sort(big_population, frontsList);
-
 		select_reduced_population(frontsList, parents, offspring, g);
 		generate_offspring(parents, offspring, g, crossoverProbability);
-		i++;
+
 	}
 
 	merge(parents, offspring, big_population);
