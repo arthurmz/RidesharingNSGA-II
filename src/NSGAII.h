@@ -110,14 +110,15 @@ double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);
-void generate_offspring(Population *parents, Population *offspring,  Graph *g, float crossoverProbability );
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability );
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
-void select_reduced_population(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
+void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
 Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g);
 void mutation(Individuo *ind, Graph *g);
+void copy(Population * source, Population *destiny);
 
 #endif /* NSGAII_H_ */

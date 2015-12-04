@@ -47,26 +47,29 @@ int main(int argc,  char** argv){
 	if (g == NULL) return 0;
 
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
+	Population *parents =(Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
-	Population * parents = generate_random_population(POPULATION_SIZE, g);
-	Population * offspring = generate_random_population(POPULATION_SIZE, g);
-	evaluate_objective_functions_pop(parents, g);
-	fast_nondominated_sort(parents, frontsList);
-	select_reduced_population(frontsList, parents, offspring, g);
-	generate_offspring(parents, offspring, g, crossoverProbability);
+	Population * population = generate_random_population(POPULATION_SIZE, g);
+	Population * children = generate_random_population(POPULATION_SIZE, g);
+
+	evaluate_objective_functions_pop(population, g);
+	fast_nondominated_sort(population, frontsList);
+	select_parents_by_rank(frontsList, parents, children, g);
+	crossover_and_mutation(parents, children, g, crossoverProbability);
 
 	int i = 0;
 	while(i < ITERATIONS){
-		evaluate_objective_functions_pop(offspring, g);
-		merge(parents, offspring, big_population);
+		evaluate_objective_functions_pop(children, g);
+		merge(population, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);
-		select_reduced_population(frontsList, parents, offspring, g);
-		generate_offspring(parents, offspring, g, crossoverProbability);
+		select_parents_by_rank(frontsList, parents, children, g);
+		copy(children,population);
+		crossover_and_mutation(parents, children, g, crossoverProbability);
 
 	}
 
-	merge(parents, offspring, big_population);
+	merge(population, children, big_population);
 	fast_nondominated_sort(big_population, frontsList);
 	evaluate_objective_functions_pop(frontsList->list[0], g);
 	save_to_file(frontsList);

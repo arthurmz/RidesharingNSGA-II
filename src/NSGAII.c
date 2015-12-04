@@ -508,6 +508,34 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 
 }
 
+void copy(Population * source, Population *destiny){
+	for (int i = 0; i < source->size; i++){
+		for (int j = 0; j < source->list[i]->size; j++){
+			for (int k = 0; k < source->list[i]->cromossomo[j].length; k++){
+				destiny->list[i]->cromossomo[j].list[k].is_source = source->list[i]->cromossomo[j].list[k].is_source;
+				destiny->list[i]->cromossomo[j].list[k].r = source->list[i]->cromossomo[j].list[k].r;
+				destiny->list[i]->cromossomo[j].list[k].time = source->list[i]->cromossomo[j].list[k].time;
+				destiny->list[i]->cromossomo[j].list[k].waiting_time = source->list[i]->cromossomo[j].list[k].waiting_time;
+			}
+			destiny->list[i]->cromossomo[j].length = source->list[i]->cromossomo[j].length;
+		}
+		destiny->list[i]->crowding_distance = source->list[i]->crowding_distance;
+		destiny->list[i]->dominated_by_count = source->list[i]->dominated_by_count;//não copia a lista de dominados. chegando aqui tem que tá vazia
+		destiny->list[i]->dominates_list_capacity = source->list[i]->dominates_list_capacity;
+		destiny->list[i]->dominates_list_count = source->list[i]->dominates_list_count;
+		destiny->list[i]->objetivos[0] = source->list[i]->objetivos[0];
+		destiny->list[i]->objetivos[1] = source->list[i]->objetivos[1];
+		destiny->list[i]->objetivos[2] = source->list[i]->objetivos[2];
+		destiny->list[i]->objetivos[3] = source->list[i]->objetivos[3];
+		destiny->list[i]->objetivos[4] = source->list[i]->objetivos[4];
+		destiny->list[i]->rank = source->list[i]->rank;
+		destiny->list[i]->size = source->list[i]->size;
+	}
+	destiny->max_capacity = source->max_capacity;//Espera que de todo jeito sejam do mesmo tamanho
+	destiny->size = source->size;
+	destiny->id_front = source->id_front;
+}
+
 
 /*Inicia a população na memória e então:
  * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
@@ -579,7 +607,7 @@ Population *generate_random_population(int size, Graph *g){
  * Remove da lista de pais e filhos as listas de dominação
  * "esvazia" o frontsList
  * */
-void select_reduced_population(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
+void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
 
 	int lastPosition = 0;
 
@@ -815,7 +843,7 @@ void mutation(Individuo *ind, Graph *g){
 
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
-void generate_offspring(Population *parents, Population *offspring,  Graph *g, float crossoverProbability ){
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability ){
 	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
 	int i = 0;
 	while (offspring->size < parents->size){
