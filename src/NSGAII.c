@@ -766,18 +766,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 	}
 	else{
 		int i = 0;
-		for (i = 0; i < crossoverPoint; i++){
-			Rota r = parent2->cromossomo[i];
-			//Copiando os services da rota
-			for (int j = 0; j < parent2->cromossomo[i].length; j++){
-				offspring1->cromossomo[i].list[j].r = r.list[j].r;
-				offspring1->cromossomo[i].list[j].is_source = r.list[j].is_source;
-				offspring1->cromossomo[i].list[j].time = r.list[j].time;
-				offspring1->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
-			}
-			offspring1->cromossomo[i].length = parent2->cromossomo[i].length;
-		}
-		for (i = crossoverPoint; i < rotaSize; i++){
+		for (i = 0; i < rotaSize; i++){
 			Rota r = parent1->cromossomo[i];
 			for (int j = 0; j < parent1->cromossomo[i].length; j++){
 				offspring1->cromossomo[i].list[j].r = r.list[j].r;
@@ -787,18 +776,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 			}
 			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
 		}
-		for (i = 0; i < crossoverPoint; i++){
-			Rota r = parent1->cromossomo[i];
-			//Copiando os services da rota
-			for (int j = 0; j < parent1->cromossomo[i].length; j++){
-				offspring2->cromossomo[i].list[j].r = r.list[j].r;
-				offspring2->cromossomo[i].list[j].is_source = r.list[j].is_source;
-				offspring2->cromossomo[i].list[j].time = r.list[j].time;
-				offspring2->cromossomo[i].list[j].waiting_time = r.list[j].waiting_time;
-			}
-			offspring2->cromossomo[i].length = parent1->cromossomo[i].length;
-		}
-		for (i = crossoverPoint; i < rotaSize; i++){
+		for (i = 0; i < rotaSize; i++){
 			Rota r = parent2->cromossomo[i];
 			for (int j = 0; j < parent2->cromossomo[i].length; j++){
 				offspring2->cromossomo[i].list[j].r = r.list[j].r;
