@@ -53,10 +53,15 @@ void add_dominated(Individuo *b, Individuo *a){
 
 }
 
-/*Ordena os indivíduos segundo o critério de não dominação
- * "Esvazia" o population*/
+/*Ordena os indivíduos segundo o critério de não dominação*/
 void fast_nondominated_sort(Population *population, Fronts * fronts){
-	fronts->size = 0;//Como
+	/*====================Zerando o frontlist==================================*/
+	for (int i = 0; i < fronts->size; i++){
+		fronts->list[i]->size = 0;
+	}
+	fronts->size = 0;
+
+
 	//Primeiro passo, computando as dominancias
 	for (int i = 0; i < population->size; i++){
 		Individuo *a = population->list[i];
@@ -97,8 +102,6 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		}
 		index_front++;
 	}
-
-	population->size = 0;//Zera o bigpopulation
 }
 
 /*Pra poder usar a função qsort com N objetivos,
@@ -569,9 +572,9 @@ Population *generate_random_population(int size, Graph *g){
 
 
 			//Insere mais N caronas
-			int qtd_caronas_inserir = rand() % 5;//Outro parâmetro tirado do bolso
+			int qtd_caronas_inserir = rand() % VEHICLE_CAPACITY;
 			int caronas_inseridos = 0;
-			int tentativas_restantes = 12;
+			int tentativas_restantes = 6;
 			shuffle(index_array, g->riders);
 
 			for (int z = 0; z < g->riders; z++){
@@ -608,8 +611,9 @@ Population *generate_random_population(int size, Graph *g){
  * "esvazia" o frontsList
  * */
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
-
 	int lastPosition = 0;
+	parents->size = 0;
+	offsprings->size = 0;
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
 	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
@@ -651,19 +655,14 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 			offsprings->list[offsprings->size++] = frontsList->list[lastPosition++]->list[k];
 		}
 	}
-
-
-	/*====================Zerando o frontlist==================================*/
-	for (int i = 0; i < frontsList->size; i++){
-		frontsList->list[i]->size = 0;
-	}
-	frontsList->size = 0;
 }
 
 /*Copia o conteúdo das duas populações na terceira.
  * é uma cópia simples, onde assume-se que os indivíduos estão na heap
  * "esvazia" p1 e p2*/
 void merge(Population *p1, Population *p2, Population *big_population){
+	big_population->size = 0;//Zera o bigpopulation
+
 	for (int i = 0; i < p1->size + p2->size; i++){
 		if (i < p1->size){
 			big_population->list[i] = p1->list[i];
@@ -673,8 +672,6 @@ void merge(Population *p1, Population *p2, Population *big_population){
 		}
 	}
 	big_population->size = p1->size + p2->size;
-	p1->size = 0;
-	p2->size = 0;
 }
 
 

@@ -14,11 +14,9 @@
 #include "Helper.h"
 #include "NSGAII.h"
 
-
-void save_to_file(Fronts * f){
-	Population * fronteira = f->list[0];
-	for (int i = 0; i < fronteira->size; i++){
-		Individuo *id = fronteira->list[i];
+void print(Population *p){
+	for (int i = 0; i < p->size; i++){
+		Individuo *id = p->list[i];
 		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
 	}
 }
@@ -46,33 +44,41 @@ int main(int argc,  char** argv){
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
+
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
-	Population *parents =(Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
-	Population * population = generate_random_population(POPULATION_SIZE, g);
+	Population * parents = generate_random_population(POPULATION_SIZE, g);
 	Population * children = generate_random_population(POPULATION_SIZE, g);
-
-	evaluate_objective_functions_pop(population, g);
-	fast_nondominated_sort(population, frontsList);
+	evaluate_objective_functions_pop(parents, g);
+	fast_nondominated_sort(parents, frontsList);
 	select_parents_by_rank(frontsList, parents, children, g);
 	crossover_and_mutation(parents, children, g, crossoverProbability);
+	evaluate_objective_functions_pop(children, g);
+	printf("Imprimindo a propulação inicial:\n");
+	print(parents);
+	printf("Imprimindo os filhos\n");
+	print(children);
+	printf("Imprimindo a primeira rodada do merge\n");
+	merge(parents, children, big_population);
+	fast_nondominated_sort(big_population, frontsList);
+	print(frontsList->list[0]);
 
 	int i = 0;
-	while(i < ITERATIONS){
+	while(i < 2){
 		evaluate_objective_functions_pop(children, g);
-		merge(population, children, big_population);
+		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);
 		select_parents_by_rank(frontsList, parents, children, g);
-		copy(children,population);
 		crossover_and_mutation(parents, children, g, crossoverProbability);
-
+		i++;
 	}
 
-	merge(population, children, big_population);
+	merge(parents, children, big_population);
 	fast_nondominated_sort(big_population, frontsList);
 	evaluate_objective_functions_pop(frontsList->list[0], g);
-	save_to_file(frontsList);
+	printf("Imprimindo o ultimo front obtido:\n");
+	print(frontsList->list[0]);
 
 
 	//complete_free_population(parents);
