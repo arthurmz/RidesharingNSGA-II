@@ -301,6 +301,9 @@ bool is_distancia_motorista_respeitada(Rota * rota){
 	return accDistance <= MTD;
 }
 
+
+/*Calculoa o tempo gasto para ir do ponto i ao ponto j, através de cada
+ * request da rota.*/
 double tempo_gasto_rota(Rota *rota, int i, int j){
 	double accTime =0;
 	for (int k = i; k < j; k++){
@@ -474,7 +477,7 @@ void clean_riders_matches(Graph *g){
 }
 
 void evaluate_objective_functions_pop(Population* p, Graph *g){
-	for (int i = 0; i < p->size; i++){
+	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
 		evaluate_objective_functions(p->list[i], g);
 		clean_riders_matches(g);
 	}
@@ -487,23 +490,25 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 	double rider_time = 0;
 	double riders_unmatched = g->riders;
 	for (int m = 0; m < idv->size; m++){//pra cada rota
-		Rota *r = &idv->cromossomo[m];
+		Rota *rota = &idv->cromossomo[m];
 
-		vehicle_time += tempo_gasto_rota(r, 0, r->length-1);
-		distance += distancia_percorrida(r);
+		vehicle_time += tempo_gasto_rota(rota, 0, rota->length-1);
+		distance += distancia_percorrida(rota);
 
-		for (int i = 0; i < r->length-1; i++){//Pra cada um dos sources
-			Service *source = &r->list[i];
-			if (!source->is_source)
+		for (int i = 0; i < rota->length-1; i++){//Pra cada um dos sources services
+			Service *service = &rota->list[i];
+			if (!service->is_source || service->r == rota->list[0].r)//só contabiliza os services source que não é o motorista
 				continue;
-			if (source->r == r->list[0].r)
+			if (service->r != rota->list[0].r)//o erro tava aqui
 				riders_unmatched --;
-			for (int j = i+1; j < r->length; j++){//Repete o for até encontrar o destino
-				Service *destiny = &r->list[j];
-				if(destiny->is_source || source->r != destiny->r || source->r == r->list[0].r)
+			//Repete o for até encontrar o destino
+			//Ainda não considera o campo OFFSET contido no typedef SERVICE
+			for (int j = i+1; j < rota->length; j++){
+				Service *destiny = &rota->list[j];
+				if(destiny->is_source || service->r != destiny->r)
 					continue;
 
-				rider_time += tempo_gasto_rota(r, i, j);
+				rider_time += tempo_gasto_rota(rota, i, j);
 				break;
 			}
 		}
@@ -601,6 +606,7 @@ Population *generate_random_population(int size, Graph *g){
 			rota->list[0].r = driver;
 			rota->list[0].is_source = true;
 			rota->list[0].time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
+			rota->list[0].offset = 1;//Informa que o destino está logo à frente
 			rota->list[1].r = driver;
 			rota->list[1].is_source = false;
 			rota->list[1].time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
@@ -608,6 +614,8 @@ Population *generate_random_population(int size, Graph *g){
 
 			insere_carona_rota_aleatorias(index_array, g, rota);
 		}
+		//Depois de inserir todas as rotas, limpa a lista de matches
+		//Para que o próximo indivíduo possa usa-las
 		clean_riders_matches(g);
 	}
 	return p;

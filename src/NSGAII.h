@@ -38,6 +38,7 @@ typedef struct Service{
 	//Atualizado ao inserir uma nova carona
 	double waiting_time;
 	bool is_source;//1-está saindo da origem, 0-está chegando no destino
+	int offset;//Distância desse source até o service destino;
 }Service;
 
 /*A rota guarda o serviço, podendo sobrescrever
