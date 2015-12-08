@@ -48,7 +48,6 @@ void add_dominated(Individuo *b, Individuo *a){
 		if (temp != NULL) b->dominates_list = temp;
 	}
 	b->dominates_list[b->dominates_list_count] = a;
-	a->ref_count++;
 	b->dominates_list_count++;
 
 }
@@ -60,6 +59,12 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		fronts->list[i]->size = 0;
 	}
 	fronts->size = 0;
+
+	/*===================Zerando o dominated counts============================*/
+	for (int i = 0; i < population->size; i++){
+		population->list[i]->dominated_by_count = 0;
+		population->list[i]->dominates_list_count = 0;
+	}
 
 
 	//Primeiro passo, computando as dominancias

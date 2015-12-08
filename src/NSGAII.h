@@ -61,10 +61,6 @@ typedef struct Individuo{
 	int dominates_list_count;//número de soluções dominadas por ind
 	int rank;//Qual front este indivíduo está
 	float crowding_distance;
-
-	//Contador de Referências pra este indivíduo
-	//Mais especificamente, conta a quantidade de referências desse indivíduo por OUTRO indivíduo
-	int ref_count;
 }Individuo;
 
 /*Os indivíduos são armazenados no heap pra

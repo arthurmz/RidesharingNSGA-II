@@ -50,7 +50,10 @@ int main(int argc,  char** argv){
 
 	Population * parents = generate_random_population(POPULATION_SIZE, g);
 	Population * children = generate_random_population(POPULATION_SIZE, g);
+
 	evaluate_objective_functions_pop(parents, g);
+
+	/*
 	fast_nondominated_sort(parents, frontsList);
 	select_parents_by_rank(frontsList, parents, children, g);
 	crossover_and_mutation(parents, children, g, crossoverProbability);
@@ -63,6 +66,7 @@ int main(int argc,  char** argv){
 	merge(parents, children, big_population);
 	fast_nondominated_sort(big_population, frontsList);
 	print(frontsList->list[0]);
+	*/
 
 	int i = 0;
 	while(i < ITERATIONS){
