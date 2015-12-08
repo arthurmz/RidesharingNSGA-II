@@ -65,7 +65,7 @@ int main(int argc,  char** argv){
 	print(frontsList->list[0]);
 
 	int i = 0;
-	while(i < 2){
+	while(i < ITERATIONS){
 		evaluate_objective_functions_pop(children, g);
 		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);

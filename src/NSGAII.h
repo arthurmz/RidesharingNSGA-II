@@ -117,7 +117,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
-void repair(Individuo *offspring, Graph *g);
+void repair(Individuo *offspring, Graph *g, int index_array[]);
 void mutation(Individuo *ind, Graph *g);
 void copy(Population * source, Population *destiny);
 

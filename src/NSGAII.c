@@ -539,6 +539,37 @@ void copy(Population * source, Population *destiny){
 	destiny->id_front = source->id_front;
 }
 
+/*Insere uma quantidade variável de caronas na rota informada
+ * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
+void insere_carona_rota_aleatorias(int index_array[], Graph *g, Rota* rota){
+	//Insere mais N caronas
+	int qtd_caronas_inserir = rand() % VEHICLE_CAPACITY;
+	int caronas_inseridos = 0;
+	int tentativas_restantes = 6;
+	shuffle(index_array, g->riders);
+
+	for (int z = 0; z < g->riders; z++){
+		Request * carona = &g->request_list[index_array[z]];
+		if (carona->matched) continue;
+		if (qtd_caronas_inserir == 0 || tentativas_restantes == 0) break;
+
+		int posicao_inicial = 1 + (rand () % (rota->length-1));
+		int offset = 1;//TODO, variar o offset
+
+		bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
+
+		if (conseguiu){
+			//printf("Carona inserido com sucesso!\n");
+			caronas_inseridos++;
+		}
+		else{
+			tentativas_restantes--;
+		}
+
+		if (caronas_inseridos == qtd_caronas_inserir) break;
+	}
+}
+
 
 /*Inicia a população na memória e então:
  * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
@@ -570,33 +601,7 @@ Population *generate_random_population(int size, Graph *g){
 			rota->list[1].time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
 			rota->length = 2;
 
-
-			//Insere mais N caronas
-			int qtd_caronas_inserir = rand() % VEHICLE_CAPACITY;
-			int caronas_inseridos = 0;
-			int tentativas_restantes = 6;
-			shuffle(index_array, g->riders);
-
-			for (int z = 0; z < g->riders; z++){
-				Request * carona = &g->request_list[index_array[z]];
-				if (carona->matched) continue;
-				if (qtd_caronas_inserir == 0 || tentativas_restantes == 0) break;
-
-				int posicao_inicial = 1 + (rand () % (rota->length-1));
-				int offset = 1;//TODO, variar o offset
-
-				bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
-
-				if (conseguiu){
-					//printf("Carona inserido com sucesso!\n");
-					caronas_inseridos++;
-				}
-				else{
-					tentativas_restantes--;
-				}
-
-				if (caronas_inseridos == qtd_caronas_inserir) break;
-			}
+			insere_carona_rota_aleatorias(index_array, g, rota);
 		}
 		clean_riders_matches(g);
 	}
@@ -704,6 +709,8 @@ Individuo * tournamentSelection(Population * parents){
 	for (int i = 0; i < 2; i++){
 		int pos = rand() % parents->size;
 		Individuo * outro = parents->list[pos];
+		if (outro == NULL)
+			printf("outro é nulo\n");
 		if (best == NULL || crowded_comparison_operator(outro, best))
 			best = outro;
 	}
@@ -792,13 +799,14 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 /*Remove todas as caronas que quebram a validação
  * Tenta inserir novas
  * Utiliza graph pra saber quem já fez match.
- * Tem que chamar o clean_matches depois*/
-void repair(Individuo *offspring, Graph *g){
-	for (int i = 0; i < offspring->size; i++){
+ * */
+void repair(Individuo *offspring, Graph *g, int index_array[]){
+
+	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
 		Rota *rota = &offspring->cromossomo[i];
 
-		for (int j = 0; j < rota->length; j++){
-			if (rota->list[j].r->matched){
+		for (int j = 0; j < rota->length; j++){//pra cada um dos services na rota
+			if (rota->list[j].r->matched || !is_rota_valida(rota)){
 				int offset = 1;
 				for (int k = j+1; k < rota->length; k++){//encontrando o offset
 					if (rota->list[j].r == rota->list[k].r && !rota->list[k].is_source)
@@ -806,6 +814,10 @@ void repair(Individuo *offspring, Graph *g){
 					offset++;
 				}
 				desfaz_insercao_carona_rota(rota, j, offset);
+				insere_carona_rota_aleatorias(index_array, g, rota);
+			}
+			else{
+				rota->list[j].r->matched = true;
 			}
 		}
 	}
@@ -819,6 +831,11 @@ void mutation(Individuo *ind, Graph *g){
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
 void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability ){
+	int index_array[g->riders];
+	for (int l = 0; l < g->riders; l++){
+		index_array[l] = l;
+	}
+
 	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
 	int i = 0;
 	while (offspring->size < parents->size){
@@ -830,8 +847,10 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 
 		crossover(parent1, parent2, offspring1, offspring2, crossoverProbability);
 
-		repair(offspring1, g);
-		repair(offspring2, g);
+		clean_riders_matches(g);
+		repair(offspring1, g, index_array);
+		clean_riders_matches(g);
+		repair(offspring2, g, index_array);
 
 		mutation(offspring1, g);
 		mutation(offspring2, g);
