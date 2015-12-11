@@ -28,6 +28,7 @@ void shuffle(int *array, int n);
 void free_population(Population *population);
 void complete_free_population(Population *population);
 void free_population_fronts(Fronts * f);
+void print(Population *p);
 
 
 #endif /* HELPER_H_ */

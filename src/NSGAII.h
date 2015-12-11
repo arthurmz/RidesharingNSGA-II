@@ -92,7 +92,7 @@ typedef struct Graph{
 
 
 Graph *new_graph(int drivers, int riders, int total_requests);
-Population *generate_random_population(int size, Graph *g);
+Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
@@ -101,6 +101,7 @@ void crowding_distance_assignment(Population *front_i);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+void insere_carona_rota_aleatorias(int index_array[], Graph *g, Rota* rota, int tentativas);
 //void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
@@ -114,7 +115,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
-void repair(Individuo *offspring, Graph *g, int index_array[]);
+void repair(Individuo *offspring, Graph *g, int index_array[], int position);
 void mutation(Individuo *ind, Graph *g);
 void copy(Population * source, Population *destiny);
 

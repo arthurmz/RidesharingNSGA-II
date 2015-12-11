@@ -116,6 +116,7 @@ double time_between_requests(Request *a, Request *b){
 	return distance / VEHICLE_SPEED * 60;
 }
 
+
 Graph * parse_file(char *filename){
 	FILE *fp=fopen(filename, "r");
 
@@ -233,4 +234,11 @@ void free_population_fronts(Fronts * f){
 	}
 }
 
+
+void print(Population *p){
+	for (int i = 0; i < p->size; i++){
+		Individuo *id = p->list[i];
+		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
+	}
+}
 
