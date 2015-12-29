@@ -39,7 +39,7 @@ int main(int argc,  char** argv){
 	sscanf(argv[3], "%d", &ITERATIONS);
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
-	/*Setup======================================*/
+	/*============================================*/
 
 	//Aloca uma lista de indivíduos com o dobro da capacidade de uma população
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
@@ -69,21 +69,21 @@ int main(int argc,  char** argv){
 	printf("Avaliando cada um dos objetivos de cada um dos indivíduos dos FILHOS\n");
 	evaluate_objective_functions_pop(children, g);
 
-	printf("Imprimindo a propulação inicial:\n");
-	print(parents);
-	printf("Imprimindo os filhos\n");
-	print(children);
+	//printf("Imprimindo a propulação inicial:\n");
+	//print(parents);
+	//printf("Imprimindo os filhos\n");
+	//print(children);
 
-	printf("Realizando o primeiro Merge\n");
-	merge(parents, children, big_population);
+	//printf("Realizando o primeiro Merge\n");
+	//merge(parents, children, big_population);
 
-	printf("Fast Nondominated Sort inicial, resultado\n");
-	fast_nondominated_sort(big_population, frontsList);
-	print(frontsList->list[0]);
-/*
+	//printf("Fast Nondominated Sort inicial, resultado\n");
+	//fast_nondominated_sort(big_population, frontsList);
+	//print(frontsList->list[0]);
 
 	int i = 0;
 	while(i < ITERATIONS){
+		printf("Interação %d...\n", i);
 		evaluate_objective_functions_pop(children, g);
 		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);
@@ -100,7 +100,6 @@ int main(int argc,  char** argv){
 	printf("Imprimindo o ultimo front obtido:\n");
 	print(frontsList->list[0]);
 
-	 */
 	//complete_free_population(parents);
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;

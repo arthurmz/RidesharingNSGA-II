@@ -550,11 +550,8 @@ void copy(Population * source, Population *destiny){
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
-void insere_carona_rota_aleatorias(int index_array[], Graph *g, Rota* rota, int tentativas){
-	//Insere mais N caronas
-	//int qtd_caronas_inserir = rand() % VEHICLE_CAPACITY;
-	int qtd_caronas_inserir = 5;
-	//int caronas_inseridos = 0;
+void insere_carona_aleatoria_rota(int index_array[], Graph *g, Rota* rota, int tentativas){
+	int qtd_caronas_inserir = VEHICLE_CAPACITY;
 	shuffle(index_array, g->riders);
 
 	for (int z = 0; z < g->riders; z++){
@@ -614,7 +611,7 @@ Population *generate_random_population(int size, Graph *g, bool insereCaronasAle
 			rota->length = 2;
 
 			if (insereCaronasAleatorias)
-				insere_carona_rota_aleatorias(index_array, g, rota, 30);
+				insere_carona_aleatoria_rota(index_array, g, rota, 5);
 		}
 		//Depois de inserir todas as rotas, limpa a lista de matches
 		//Para que o próximo indivíduo possa usa-las
@@ -845,7 +842,7 @@ void repair(Individuo *offspring, Graph *g, int index_array[], int position){
 				}
 				desfaz_insercao_carona_rota(rota, j, offset);
 				//Nesse ponto, depois de remover, a rota vai estar ok
-				insere_carona_rota_aleatorias(index_array, g, rota, 5);
+				insere_carona_aleatoria_rota(index_array, g, rota, 5);
 			}
 			else{
 				rota->list[j].r->matched = true;
@@ -871,7 +868,7 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 	int i = 0;
 	while (offspring->size < parents->size){
 
-		printf("Passo %d, parentsize %d offspringsize %d \n", i, parents->size, offspring->size);
+		//printf("Passo %d, parentsize %d offspringsize %d \n", i, parents->size, offspring->size);
 		Individuo *parent1 = tournamentSelection(parents);
 		Individuo *parent2 = tournamentSelection(parents);
 
