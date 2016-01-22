@@ -41,23 +41,18 @@ int main(int argc,  char** argv){
 	if (g == NULL) return 0;
 	/*============================================*/
 
-	//Aloca uma lista de indivíduos com o dobro da capacidade de uma população
+	
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
-	//Aloca uma lista de populações inicializadas cujos indivíduos não estão inicializados
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
-	printf("Gerando uma população de indivíduos válidos\n");
+	
 	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
-	//Gera uma população de indivíduos válidos
-	printf("Gerando a população de filhos\n");
 	Population * children = generate_random_population(POPULATION_SIZE, g, false);
-
-	printf("Avaliando cada um dos objetivos de cada um dos indivíduos da população\n");
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;
 	while(i < ITERATIONS){
-		printf("Interação %d...\n", i);
+		printf("Iteracao %d...\n", i);
 		evaluate_objective_functions_pop(children, g);
 		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);
@@ -68,8 +63,11 @@ int main(int argc,  char** argv){
 		crossover_and_mutation(parents, children, g, crossoverProbability);
 		i++;
 	}
+	
+	//Ao sair do loop, verificamos uma ultima vez o melhor gerado entre os pais e filhos
 
 	evaluate_objective_functions_pop(parents, g);
+	evaluate_objective_functions_pop(children, g);
 	merge(parents, children, big_population);
 	fast_nondominated_sort(big_population, frontsList);
 
