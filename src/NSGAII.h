@@ -97,7 +97,7 @@ void add_Individuo_front(Fronts * fronts, Individuo *p);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);
-void crowding_distance_assignment(Population *front_i);
+void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);

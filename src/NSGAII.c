@@ -26,29 +26,29 @@ void add_Individuo_front(Fronts * fronts, Individuo *p){
 
 /*Verifica se A domina B (melhor em pelo menos 1 obj)*/
 bool dominates(Individuo *a, Individuo *b){
-	bool minor_found = false;
+	bool smaller_found = false;
 	for (int i = 0; i < QTD_OBJECTIVES; i++){
 		if (a->objetivos[i] < b->objetivos[i])
-			minor_found = true;
+			smaller_found = true;
 		if (a->objetivos[i] > b->objetivos[i])
 			return false;
 	}
-	return minor_found;
+	return smaller_found;
 }
 
-void add_dominated(Individuo *b, Individuo *a){
-	if (b->dominates_list == NULL){
-		b->dominates_list = malloc(16* sizeof(Individuo*));
-		b->dominates_list_capacity = 16;
+void add_dominated(Individuo *a, Individuo *b){
+	if (a->dominates_list == NULL){
+		a->dominates_list = malloc(32* sizeof(Individuo*));
+		a->dominates_list_capacity = 32;
 	}
 
-	if (b->dominates_list_capacity <= b->dominates_list_count){
-		b->dominates_list_capacity += 16;
-		Individuo **temp = realloc(b->dominates_list, b->dominates_list_capacity * sizeof(Individuo*));
-		if (temp != NULL) b->dominates_list = temp;
+	if (a->dominates_list_capacity <= a->dominates_list_count){
+		a->dominates_list_capacity += 32;
+		Individuo **temp = realloc(a->dominates_list, a->dominates_list_capacity * sizeof(Individuo*));
+		if (temp != NULL) a->dominates_list = temp;
 	}
-	b->dominates_list[b->dominates_list_count] = a;
-	b->dominates_list_count++;
+	a->dominates_list[a->dominates_list_count] = b;
+	a->dominates_list_count++;
 
 }
 
@@ -168,41 +168,39 @@ int compare3(const void *p, const void *q) {
 
 
 /*Deve ser chamado depois de determinar as funções objetivo*/
-void crowding_distance_assignment(Population *front_i){
-	for (int i = 0; i < front_i->size; i++){
-		front_i->list[i]->crowding_distance = 0;
+void crowding_distance_assignment(Population *pop){
+	for (int i = 0; i < pop->size; i++){
+		pop->list[i]->crowding_distance = 0;
 	}
 	for (int k = 0; k < QTD_OBJECTIVES; k++){
 		switch(k){
 		case 0:
-			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare0 );
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare0 );
 			break;
 		case 1:
-			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare1 );
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare1 );
 			break;
 		case 2:
-			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare2 );
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare2 );
 			break;
 		case 3:
-			qsort(front_i->list, front_i->size, sizeof(Individuo*), compare3 );
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare3 );
 			break;
 		}
 
-		front_i->list[0]->crowding_distance = INT_MAX;
-		front_i->list[front_i->size -1]->crowding_distance = INT_MAX;
+		pop->list[0]->crowding_distance = INT_MAX;
+		pop->list[pop->size -1]->crowding_distance = INT_MAX;
 
-		float obj_min = front_i->list[0]->objetivos[k];//valor max do obj k
-		float obj_max = front_i->list[front_i->size -1]->objetivos[k];//valor min do obj k
+		float obj_min = pop->list[0]->objetivos[k];//valor min do obj k
+		float obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
 
+		float diff = fmax(0.0001, obj_max - obj_min);
 
-		float diff = fmax(0.001, abs(obj_max - obj_min));
+		for (int z = 1; z < pop->size -1; z++){
+			float prox_obj = pop->list[z+1]->objetivos[k];
+			float ant_obj = pop->list[z-1]->objetivos[k];
 
-
-		for (int z = 1; z < front_i->size -1; z++){
-			float prox_obj = front_i->list[z+1]->objetivos[k];
-			float ant_obj = front_i->list[z-1]->objetivos[k];
-
-			front_i->list[z]->crowding_distance += abs(prox_obj - ant_obj) / diff;
+			pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
 		}
 
 	}
@@ -481,7 +479,7 @@ void evaluate_objective_functions_pop(Population* p, Graph *g){
 		evaluate_objective_functions(p->list[i], g);
 		clean_riders_matches(g);
 	}
-	crowding_distance_assignment(p);
+	//crowding_distance_assignment(p);
 }
 
 void evaluate_objective_functions(Individuo *idv, Graph *g){
@@ -611,7 +609,7 @@ Population *generate_random_population(int size, Graph *g, bool insereCaronasAle
 			rota->length = 2;
 
 			if (insereCaronasAleatorias)
-				insere_carona_aleatoria_rota(index_array, g, rota, 5);
+				insere_carona_aleatoria_rota(index_array, g, rota, 20);
 		}
 		//Depois de inserir todas as rotas, limpa a lista de matches
 		//Para que o próximo indivíduo possa usa-las
@@ -639,6 +637,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	for (int i = 0; i < frontsList->size; i++){
 		Population * front_i = frontsList->list[i];
 		lastPosition = i;
+		crowding_distance_assignment(front_i);
 		if (parents->max_capacity - parents->size >= front_i->size){
 			for (int j = 0; j < front_i->size; j++){
 				parents->list[parents->size++] = front_i->list[j];
