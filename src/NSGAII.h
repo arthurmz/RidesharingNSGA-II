@@ -118,6 +118,6 @@ void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int index_array[], int position);
 void mutation(Individuo *ind, Graph *g);
-void copy(Population * source, Population *destiny);
+//void copy(Population * source, Population *destiny);
 
 #endif /* NSGAII_H_ */

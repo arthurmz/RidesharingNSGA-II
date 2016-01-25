@@ -521,6 +521,7 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 
 }
 
+/*
 void copy(Population * source, Population *destiny){
 	for (int i = 0; i < source->size; i++){
 		for (int j = 0; j < source->list[i]->size; j++){
@@ -548,6 +549,7 @@ void copy(Population * source, Population *destiny){
 	destiny->size = source->size;
 	destiny->id_front = source->id_front;
 }
+*/
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
@@ -633,6 +635,16 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	int lastPosition = 0;
 	parents->size = 0;
 	offsprings->size = 0;
+	
+	
+	//Confirmando, provavelmente frontsList ta vindo com menos elementos do que o necessario pra encher parents
+	int total;
+	for (int i = 0; i < frontsList->size; i++){
+	  total += frontsList->list[i]->size;
+	}
+	
+	if (total < 100)
+	  printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
 	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
@@ -643,6 +655,9 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 		crowding_distance_assignment(front_i);
 		if (parents->max_capacity - parents->size >= front_i->size){
 			for (int j = 0; j < front_i->size; j++){
+				if(front_i->list[j] == NULL){
+				  printf("front_i->list[j] eh NULL\n");
+				}
 				parents->list[parents->size++] = front_i->list[j];
 			}
 		}
@@ -650,19 +665,35 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 			break;
 		}
 	}
+	
+	/*while (parents->size < parents->max_capacity){
+		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
 
-	//int offspringAdded = 0;
+	}*/
 
 	int restantes_adicionar = parents->max_capacity - parents->size;//Qtd que tem que adicionar aos pais
 
 	//Se restantes_adicionar > 0 então o front atual não comporta todos os elementos de parent
 	if (restantes_adicionar > 0){
+		int sz = frontsList->list[lastPosition]->size;
 		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
 		for (int k = 0; k < restantes_adicionar; k++){
+			if (frontsList->list[lastPosition]->list[k] == NULL){
+			  printf("frontsList->list[lastPosition]->list[%d] eh NULL1\n", k);
+			  printf("tamanho de fronts eh %d\n", frontsList->list[lastPosition]->size);
+			  printf("tamanho de fronts anterior eh %d\n", frontsList->list[lastPosition-1]->size);
+			  printf("tamanho de fronts proximo eh %d\n", frontsList->list[lastPosition+1]->size);
+			  printf("restantes a adicionar eh %d\n", restantes_adicionar);
+			  printf("lastposition %d\n", lastPosition);
+			  printf("frontsList->size %d------\n", frontsList->size);
+			}
 			parents->list[parents->size++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
 		}
 		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
 		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
+			if (frontsList->list[lastPosition]->list[k] == NULL){
+			  printf("frontsList->list[lastPosition]->list[k] eh NULL2\n");
+			}
 			offsprings->list[offsprings->size++] = frontsList->list[lastPosition]->list[k];
 		}
 		lastPosition++;
@@ -692,6 +723,12 @@ void merge(Population *p1, Population *p2, Population *big_population){
 		}
 	}
 	big_population->size = p1->size + p2->size;
+	if (big_population->size != 200){
+	  printf("bigpopulationsize ta diferente de 200\n");
+	  printf("big_population->size = %d", big_population->size);
+	  printf("p1->size = %d", p1->size);
+	  printf("p2->size = %d", p2->size);
+	}
 }
 
 
@@ -723,6 +760,7 @@ Individuo * tournamentSelection(Population * parents){
 	Individuo * best = NULL;
 	for (int i = 0; i < 2; i++){
 		int pos = rand() % parents->size;
+		//int pos = 27;
 		Individuo * outro = parents->list[pos];
 		if (outro == NULL){
 			printf("outro é nulo\n");
