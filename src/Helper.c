@@ -18,6 +18,7 @@
 Fronts* new_front_list(int max_capacity){
 	Fronts* f = (Fronts*) calloc(1, sizeof(Fronts));
 	f->size = 0;
+	f->max_capacity = max_capacity;
 	f->list = (Population**) calloc(max_capacity, sizeof(Population*));
 	for (int i = 0; i < max_capacity; i++){
 		f->list[i] = calloc(1, sizeof(Population));
@@ -25,7 +26,7 @@ Fronts* new_front_list(int max_capacity){
 		fronti->id_front = 0;
 		fronti->size = 0;
 		fronti->max_capacity = max_capacity;
-		fronti->list = calloc(max_capacity, sizeof(Individuo*));
+		fronti->list = calloc(max_capacity, sizeof(Individuo));
 	}
 	return f;
 }

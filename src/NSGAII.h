@@ -77,6 +77,7 @@ typedef struct Population{
 
 typedef struct Fronts{
 	int size;//quantidade de fronts (pode ser diferente da capacidade max)
+	int max_capacity;
 	Population **list;//Cada população é um front
 }Fronts;
 

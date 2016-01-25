@@ -18,10 +18,13 @@
  * Atualiza o size de FRONTS caso o rank seja maior*/
 void add_Individuo_front(Fronts * fronts, Individuo *p){
 	Population *fronti = fronts->list[p->rank];
+	if (fronts->size < p->rank + 1){
+	  fronti->size = 0;
+	  fronts->size++;
+	}
+	
 	fronti->list[fronti->size] = p;
 	fronti->size++;
-	if (fronts->size < p->rank + 1)
-		fronts->size = p->rank + 1;
 }
 
 /*Verifica se A domina B (melhor em pelo menos 1 obj)*/
@@ -113,8 +116,8 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
  * precisamos implementar os n algoritmos de compare*/
 int compare0(const void *p, const void *q) {
     int ret;
-    Individuo * x = (const Individuo *)p;
-    Individuo * y = (const Individuo *)q;
+    Individuo * x = (Individuo *)p;
+    Individuo * y = (Individuo *)q;
     if (x->objetivos[0] == y->objetivos[0])
         ret = 0;
     else if (x->objetivos[0] < y->objetivos[0])
@@ -126,8 +129,8 @@ int compare0(const void *p, const void *q) {
 
 int compare1(const void *p, const void *q) {
     int ret;
-    Individuo * x = (const Individuo *)p;
-    Individuo * y = (const Individuo *)q;
+    Individuo * x = (Individuo *)p;
+    Individuo * y = (Individuo *)q;
     if (x->objetivos[1] == y->objetivos[1])
         ret = 0;
     else if (x->objetivos[1] < y->objetivos[1])
@@ -139,8 +142,8 @@ int compare1(const void *p, const void *q) {
 
 int compare2(const void *p, const void *q) {
     int ret;
-    Individuo * x = (const Individuo *)p;
-    Individuo * y = (const Individuo *)q;
+    Individuo * x = (Individuo *)p;
+    Individuo * y = (Individuo *)q;
     if (x->objetivos[2] == y->objetivos[2])
         ret = 0;
     else if (x->objetivos[2] < y->objetivos[2])
@@ -152,8 +155,8 @@ int compare2(const void *p, const void *q) {
 
 int compare3(const void *p, const void *q) {
     int ret;
-    Individuo * x = (const Individuo *)p;
-    Individuo * y = (const Individuo *)q;
+    Individuo * x = (Individuo *)p;
+    Individuo * y = (Individuo *)q;
     if (x->objetivos[3] == y->objetivos[3])
         ret = 0;
     else if (x->objetivos[3] < y->objetivos[3])
@@ -210,8 +213,8 @@ void crowding_distance_assignment(Population *pop){
  * precisamos implementar os n algoritmos de compare*/
 int compareByCrowdingDistanceMax(const void *p, const void *q) {
     int ret;
-    Individuo * x = (const Individuo *)p;
-    Individuo * y = (const Individuo *)q;
+    Individuo * x = (Individuo *)p;
+    Individuo * y = (Individuo *)q;
     if (x->crowding_distance == y->crowding_distance)
         ret = 0;
     else if (x->crowding_distance > y->crowding_distance)
@@ -721,8 +724,11 @@ Individuo * tournamentSelection(Population * parents){
 	for (int i = 0; i < 2; i++){
 		int pos = rand() % parents->size;
 		Individuo * outro = parents->list[pos];
-		if (outro == NULL)
+		if (outro == NULL){
 			printf("outro é nulo\n");
+			printf("parents->size %d\n", parents->size);
+			printf("pos %d\n", pos);
+		}
 		if (best == NULL || crowded_comparison_operator(outro, best))
 			best = outro;
 	}
