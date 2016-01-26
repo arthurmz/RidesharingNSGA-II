@@ -68,7 +68,8 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		population->list[i]->dominated_by_count = 0;
 		population->list[i]->dominates_list_count = 0;
 	}
-
+	
+	int k =0;//verificar quantas vezes add_Individuo_front foi chamado
 
 	//Primeiro passo, computando as dominancias
 	for (int i = 0; i < population->size; i++){
@@ -88,8 +89,11 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		if (a->dominated_by_count == 0){
 			a->rank = 0;
 			add_Individuo_front(fronts, a);
+			k++;
 		}
 	}
+	
+	printf("primeiro front, k = %d; ", k);
 
 	int index_front = 0;
 	//Iterando enquanto existirem novos fronts
@@ -105,11 +109,15 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 				if (indv_dominated->dominated_by_count == 0){
 					indv_dominated->rank = index_front+1;
 					add_Individuo_front(fronts, indv_dominated);
+					k++;
 				}
 			}
 		}
 		index_front++;
 	}
+	
+	printf("fim dos front, k = %d;\n", k);
+
 }
 
 /*Pra poder usar a função qsort com N objetivos,
@@ -643,8 +651,8 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	  total += frontsList->list[i]->size;
 	}
 	
-	if (total < 100)
-	  printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
+	//if (total != 100)
+	printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
 	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
@@ -723,12 +731,10 @@ void merge(Population *p1, Population *p2, Population *big_population){
 		}
 	}
 	big_population->size = p1->size + p2->size;
-	if (big_population->size != 200){
-	  printf("bigpopulationsize ta diferente de 200\n");
-	  printf("big_population->size = %d", big_population->size);
-	  printf("p1->size = %d", p1->size);
-	  printf("p2->size = %d", p2->size);
-	}
+	
+	printf("big_population->size = %d", big_population->size);
+	printf(" p1->size = %d", p1->size);
+	printf(" p2->size = %d\n", p2->size);
 }
 
 
