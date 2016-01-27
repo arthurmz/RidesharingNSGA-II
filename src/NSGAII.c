@@ -77,13 +77,11 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		for (int j = 0; j < population->size; j++){
 			if (i == j) continue;
 			Individuo *b = population->list[j];
-			//if (dominates(a,b)){   //Porque a adicao desse if melhora a convergencia?? ;X
-				//b->dominated_by_count++;
-				//add_dominated(a, b);
-			//}
-			if (dominates(b,a)){
+			if (dominates(a,b)){
+				add_dominated(a, b);
+			}
+			else if (dominates(b,a)){
 				a->dominated_by_count++;
-				add_dominated(b, a);
 			}
 		}
 		if (a->dominated_by_count == 0){
