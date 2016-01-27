@@ -69,7 +69,7 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		population->list[i]->dominates_list_count = 0;
 	}
 	
-	int k =0;//verificar quantas vezes add_Individuo_front foi chamado
+	//int count_reps =0;//verificar quantas vezes add_Individuo_front foi chamado
 
 	//Primeiro passo, computando as dominancias
 	for (int i = 0; i < population->size; i++){
@@ -77,11 +77,11 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		for (int j = 0; j < population->size; j++){
 			if (i == j) continue;
 			Individuo *b = population->list[j];
-			if (dominates(a,b)){
-				b->dominated_by_count++;
-				add_dominated(a, b);
-			}
-			else if (dominates(b,a)){
+			//if (dominates(a,b)){   //Porque a adicao desse if melhora a convergencia?? ;X
+				//b->dominated_by_count++;
+				//add_dominated(a, b);
+			//}
+			if (dominates(b,a)){
 				a->dominated_by_count++;
 				add_dominated(b, a);
 			}
@@ -89,12 +89,15 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		if (a->dominated_by_count == 0){
 			a->rank = 0;
 			add_Individuo_front(fronts, a);
-			k++;
+			//count_reps++;
 		}
 	}
 	
-	printf("primeiro front, k = %d; ", k);
+	/*printf("primeiro front, k = %d; ", count_reps);
+	printf("fronts->size ANTES: %d; \n", fronts->size);
+	printf("front_i->size %d; \n", fronts->list[0]->size);
 
+	 */
 	int index_front = 0;
 	//Iterando enquanto existirem novos fronts
 	while (index_front < fronts->size){
@@ -105,18 +108,30 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 
 			for (int k = 0; k < p->dominates_list_count; k++){
 				Individuo *indv_dominated = p->dominates_list[k];
-				indv_dominated->dominated_by_count--;
+				if (indv_dominated->dominated_by_count > 0){
+					indv_dominated->dominated_by_count--;
+				}
+				//printf("idv (%d, %d) dom_count = %d\n", i, k, indv_dominated->dominated_by_count);
 				if (indv_dominated->dominated_by_count == 0){
 					indv_dominated->rank = index_front+1;
 					add_Individuo_front(fronts, indv_dominated);
-					k++;
+					indv_dominated->dominated_by_count = -1;//Evita que o mesmo idv seja re-add em outras iteracoes
+					//count_reps++;
 				}
 			}
 		}
 		index_front++;
 	}
 	
-	printf("fim dos front, k = %d;\n", k);
+	/*
+	int totalFrontListC = 0;
+	for (int i = 0; i < fronts->size; i++){
+		totalFrontListC += fronts->list[i]->size;
+	}*/
+
+	//printf("fim dos front, count_reps = %d, totalFrontListC = %d; index_front = %d; fronts->size = %d\n", count_reps, totalFrontListC, index_front, fronts->size);
+
+
 
 }
 
@@ -233,7 +248,7 @@ int compareByCrowdingDistanceMax(const void *p, const void *q) {
 }
 
 void sort_by_crowding_distance_assignment(Population *front){
-	crowding_distance_assignment(front);
+	//crowding_distance_assignment(front); //jah eh feito antes
 	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
 }
 
@@ -646,13 +661,14 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	
 	
 	//Confirmando, provavelmente frontsList ta vindo com menos elementos do que o necessario pra encher parents
-	int total;
+	/*
+	int total = 0;
 	for (int i = 0; i < frontsList->size; i++){
 	  total += frontsList->list[i]->size;
-	}
+	}*/
 	
 	//if (total != 100)
-	printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
+	//printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
 	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
@@ -686,7 +702,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 		int sz = frontsList->list[lastPosition]->size;
 		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
 		for (int k = 0; k < restantes_adicionar; k++){
-			if (frontsList->list[lastPosition]->list[k] == NULL){
+			/*if (frontsList->list[lastPosition]->list[k] == NULL){
 			  printf("frontsList->list[lastPosition]->list[%d] eh NULL1\n", k);
 			  printf("tamanho de fronts eh %d\n", frontsList->list[lastPosition]->size);
 			  printf("tamanho de fronts anterior eh %d\n", frontsList->list[lastPosition-1]->size);
@@ -694,7 +710,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 			  printf("restantes a adicionar eh %d\n", restantes_adicionar);
 			  printf("lastposition %d\n", lastPosition);
 			  printf("frontsList->size %d------\n", frontsList->size);
-			}
+			}*/
 			parents->list[parents->size++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
 		}
 		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
@@ -711,8 +727,10 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	/*Adicionar todos os restantes de bigpopulation aos filhos*/
 	while (lastPosition < frontsList->size){
 		for (int k = 0; k < frontsList->list[lastPosition]->size; k++){
-			offsprings->list[offsprings->size++] = frontsList->list[lastPosition++]->list[k];
+			offsprings->list[offsprings->size] = frontsList->list[lastPosition]->list[k];
+			offsprings->size++;
 		}
+		lastPosition++;
 	}
 }
 
@@ -732,9 +750,9 @@ void merge(Population *p1, Population *p2, Population *big_population){
 	}
 	big_population->size = p1->size + p2->size;
 	
-	printf("big_population->size = %d", big_population->size);
-	printf(" p1->size = %d", p1->size);
-	printf(" p2->size = %d\n", p2->size);
+	//printf("big_population->size = %d", big_population->size);
+	//printf(" p1->size = %d", p1->size);
+	//printf(" p2->size = %d\n", p2->size);
 }
 
 
