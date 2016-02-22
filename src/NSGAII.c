@@ -5,7 +5,7 @@
  *      Author: arthur
  */
 
-#include <limits.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "StaticVariables.h"
@@ -137,8 +137,8 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
  * precisamos implementar os n algoritmos de compare*/
 int compare0(const void *p, const void *q) {
     int ret;
-    Individuo * x = (Individuo *)p;
-    Individuo * y = (Individuo *)q;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
     if (x->objetivos[0] == y->objetivos[0])
         ret = 0;
     else if (x->objetivos[0] < y->objetivos[0])
@@ -150,8 +150,8 @@ int compare0(const void *p, const void *q) {
 
 int compare1(const void *p, const void *q) {
     int ret;
-    Individuo * x = (Individuo *)p;
-    Individuo * y = (Individuo *)q;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
     if (x->objetivos[1] == y->objetivos[1])
         ret = 0;
     else if (x->objetivos[1] < y->objetivos[1])
@@ -163,8 +163,8 @@ int compare1(const void *p, const void *q) {
 
 int compare2(const void *p, const void *q) {
     int ret;
-    Individuo * x = (Individuo *)p;
-    Individuo * y = (Individuo *)q;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
     if (x->objetivos[2] == y->objetivos[2])
         ret = 0;
     else if (x->objetivos[2] < y->objetivos[2])
@@ -176,8 +176,8 @@ int compare2(const void *p, const void *q) {
 
 int compare3(const void *p, const void *q) {
     int ret;
-    Individuo * x = (Individuo *)p;
-    Individuo * y = (Individuo *)q;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
     if (x->objetivos[3] == y->objetivos[3])
         ret = 0;
     else if (x->objetivos[3] < y->objetivos[3])
@@ -212,8 +212,8 @@ void crowding_distance_assignment(Population *pop){
 			break;
 		}
 
-		pop->list[0]->crowding_distance = INT_MAX;
-		pop->list[pop->size -1]->crowding_distance = INT_MAX;
+		pop->list[0]->crowding_distance = FLT_MAX;
+		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
 
 		float obj_min = pop->list[0]->objetivos[k];//valor min do obj k
 		float obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
@@ -224,7 +224,8 @@ void crowding_distance_assignment(Population *pop){
 			float prox_obj = pop->list[z+1]->objetivos[k];
 			float ant_obj = pop->list[z-1]->objetivos[k];
 
-			pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
+			if (pop->list[z]->crowding_distance != FLT_MAX)
+				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
 		}
 
 	}

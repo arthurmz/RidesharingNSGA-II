@@ -27,16 +27,19 @@ int main(int argc,  char** argv){
 		printf("Argumentos insuficientes\n");
 		return 0;
 	}
-	srand (time(NULL));
+	//srand (time(NULL));
 	//Parametros (variáveis)
 	int POPULATION_SIZE;
 	int ITERATIONS;
+	int PRINT_ALL_GENERATIONS = 0;
 	float crossoverProbability = 0.75;
 	float mutationProbability = 0.1;
 	char *filename = argv[1];
 
 	sscanf(argv[2], "%d", &POPULATION_SIZE);
 	sscanf(argv[3], "%d", &ITERATIONS);
+	if (argc >= 5)
+		sscanf(argv[4], "%d", &PRINT_ALL_GENERATIONS);
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 	/*============================================*/
@@ -53,6 +56,8 @@ int main(int argc,  char** argv){
 	int i = 0;
 	while(i < ITERATIONS){
 		printf("Iteracao %d...\n", i);
+		if (i == 3)
+			printf("teste");
 		evaluate_objective_functions_pop(children, g);
 		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);
@@ -61,6 +66,8 @@ int main(int argc,  char** argv){
 		//O restante irá para os filhos, que de qualquer forma será sobreescrito pelo crossover.
 		select_parents_by_rank(frontsList, parents, children, g);
 		crossover_and_mutation(parents, children, g, crossoverProbability);
+		if (PRINT_ALL_GENERATIONS)
+			print(children);
 		i++;
 	}
 	
