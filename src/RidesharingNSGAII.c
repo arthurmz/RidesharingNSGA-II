@@ -27,7 +27,7 @@ int main(int argc,  char** argv){
 		printf("Argumentos insuficientes\n");
 		return 0;
 	}
-	//srand (time(NULL));
+	srand (time(NULL));
 	//Parametros (variáveis)
 	int POPULATION_SIZE;
 	int ITERATIONS;
@@ -82,6 +82,8 @@ int main(int argc,  char** argv){
 	printf("Imprimindo o ultimo front obtido:\n");
 	print(frontsList->list[0]);
 
+	printf("Imprimindo o front children\n");
+	print(children);
 	//complete_free_population(parents);
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;
