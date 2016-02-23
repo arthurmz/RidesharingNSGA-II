@@ -6,6 +6,7 @@
  */
 
 #include "NSGAII.h"
+#include "Helper.h"
 
 
 typedef struct Simples{
@@ -59,3 +60,19 @@ int mainbak(){
 	return 0;
 
 }
+
+//TEste harversine
+int main_harversine(){
+
+	float longitude_a = -87.6916;
+	float latitude_a = 41.89188;
+
+	float longitude_b = -88.01062;
+	float latitude_b = 41.97552;
+
+	float result = haversine_helper(latitude_a, longitude_a, latitude_b, longitude_b);
+
+	printf("%f\n", result);
+
+}
+
