@@ -275,8 +275,8 @@ bool is_dentro_janela_tempo(Rota * rota){
 			Service *destiny = &rota->list[j];
 			if(destiny->is_source || source->r != destiny->r) continue;
 
-			if ( ! ((source->r->pickup_earliest_time <= source->time && source->time <= source->r->pickup_latest_time)
-				&& (destiny->r->delivery_earliest_time <= destiny->time && destiny->time <= destiny->r->delivery_latest_time)))
+			if ( ! ((source->r->pickup_earliest_time <= source->service_time && source->service_time <= source->r->pickup_latest_time)
+				&& (destiny->r->delivery_earliest_time <= destiny->service_time && destiny->service_time <= destiny->r->delivery_latest_time)))
 				return false;
 		}
 	}
@@ -391,10 +391,10 @@ bool is_rota_valida(Rota *rota){
 double calculate_time_at(Service * actual, Service *ant){
 	double next_time = 0;
 	if (ant->is_source){
-		next_time = ant->time + ant->r->service_time_at_source + time_between_requests(ant->r, actual->r) + ant->waiting_time;
+		next_time = ant->service_time + ant->r->service_time_at_source + time_between_requests(ant->r, actual->r) + ant->waiting_time;
 	}
 	else{
-		next_time = ant->time + ant->r->service_time_at_delivery + time_between_requests(ant->r, actual->r);
+		next_time = ant->service_time + ant->r->service_time_at_delivery + time_between_requests(ant->r, actual->r);
 	}
 	return next_time;
 }
@@ -405,9 +405,9 @@ void update_times(Rota *rota){
 		Service *ant = &rota->list[i];
 		Service *actual = &rota->list[i+1];
 
-		actual->time = calculate_time_at(actual, ant);
+		actual->service_time = calculate_time_at(actual, ant);
 		if (actual->is_source)
-			actual->waiting_time = fmax(0, actual->r->pickup_earliest_time - actual->time);
+			actual->waiting_time = fmax(0, actual->r->pickup_earliest_time - actual->service_time);
 		else
 			actual->waiting_time = 0;
 	}
@@ -628,11 +628,11 @@ Population *generate_random_population(int size, Graph *g, bool insereCaronasAle
 			//Insere o motorista na rota
 			rota->list[0].r = driver;
 			rota->list[0].is_source = true;
-			rota->list[0].time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
+			rota->list[0].service_time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
 			rota->list[0].offset = 1;//Informa que o destino está logo à frente
 			rota->list[1].r = driver;
 			rota->list[1].is_source = false;
-			rota->list[1].time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
+			rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
 			rota->length = 2;
 
 			if (insereCaronasAleatorias)
@@ -754,7 +754,7 @@ void merge(Population *p1, Population *p2, Population *big_population){
 	//printf(" p2->size = %d\n", p2->size);
 }
 
-
+/*
 Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
 	Individuo *idv = new_individuo(g->drivers, g->riders);
 
@@ -777,6 +777,7 @@ Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
 
 	return idv;
 }
+*/
 
 /*seleção por torneio, k = 2*/
 Individuo * tournamentSelection(Population * parents){
@@ -814,7 +815,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring1->cromossomo[i].length = parent2->cromossomo[i].length;
@@ -826,7 +827,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
@@ -839,7 +840,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring2->cromossomo[i].length = parent1->cromossomo[i].length;
@@ -851,7 +852,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;
@@ -867,7 +868,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
@@ -879,7 +880,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 					printf("é nulo\n");
 				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
 				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].time = rota.list[j].time;
+				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
 				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 			}
 			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;

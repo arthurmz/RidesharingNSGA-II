@@ -31,9 +31,9 @@ typedef struct Request{
 /*Gene of a solution*/
 typedef struct Service{
 	Request *r;
-	//Time aqui é referente à HORA em que CHEGA nos pontos do Rider
-	//Ou a HORA em que SAI da origem do Driver.
-	double time;
+	/*O service time é a hora e minuto que este ponto começou a ser atendido.
+	 * O WAITING_TIME é um período de tempo e acontece ANTES do service_time*/
+	double service_time;
 	//Tempo de espera nos pontos de source do rider
 	//Atualizado ao inserir uma nova carona
 	double waiting_time;
@@ -54,7 +54,7 @@ typedef struct Individuo{
 	//Cada Service é uma coleta ou entrega(tanto de motorista como de carona)
 	Rota * cromossomo;
 	int size;//tamanho da lista de rotas
-	float objetivos[5];
+	float objetivos[4];
 
 	int dominated_by_count;//Número de soluções que dominam ind
 	struct Individuo **dominates_list;//Conjunto de soluções dominadas por this
@@ -113,7 +113,7 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
-Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
+//Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int index_array[], int position);
