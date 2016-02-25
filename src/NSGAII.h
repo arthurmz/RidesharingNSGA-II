@@ -103,7 +103,6 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void insere_carona_rota_aleatorias(int index_array[], Graph *g, Rota* rota, int tentativas);
-//void desfaz_insercao_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
@@ -113,11 +112,9 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
-//Individuo * new_individuo_by_individuo(Individuo *p, Graph * g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int index_array[], int position);
 void mutation(Individuo *ind, Graph *g);
-//void copy(Population * source, Population *destiny);
 
 #endif /* NSGAII_H_ */

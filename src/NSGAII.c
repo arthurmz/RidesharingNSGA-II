@@ -543,35 +543,7 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 
 }
 
-/*
-void copy(Population * source, Population *destiny){
-	for (int i = 0; i < source->size; i++){
-		for (int j = 0; j < source->list[i]->size; j++){
-			for (int k = 0; k < source->list[i]->cromossomo[j].length; k++){
-				destiny->list[i]->cromossomo[j].list[k].is_source = source->list[i]->cromossomo[j].list[k].is_source;
-				destiny->list[i]->cromossomo[j].list[k].r = source->list[i]->cromossomo[j].list[k].r;
-				destiny->list[i]->cromossomo[j].list[k].time = source->list[i]->cromossomo[j].list[k].time;
-				destiny->list[i]->cromossomo[j].list[k].waiting_time = source->list[i]->cromossomo[j].list[k].waiting_time;
-			}
-			destiny->list[i]->cromossomo[j].length = source->list[i]->cromossomo[j].length;
-		}
-		destiny->list[i]->crowding_distance = source->list[i]->crowding_distance;
-		destiny->list[i]->dominated_by_count = source->list[i]->dominated_by_count;//não copia a lista de dominados. chegando aqui tem que tá vazia
-		destiny->list[i]->dominates_list_capacity = source->list[i]->dominates_list_capacity;
-		destiny->list[i]->dominates_list_count = source->list[i]->dominates_list_count;
-		destiny->list[i]->objetivos[0] = source->list[i]->objetivos[0];
-		destiny->list[i]->objetivos[1] = source->list[i]->objetivos[1];
-		destiny->list[i]->objetivos[2] = source->list[i]->objetivos[2];
-		destiny->list[i]->objetivos[3] = source->list[i]->objetivos[3];
-		destiny->list[i]->objetivos[4] = source->list[i]->objetivos[4];
-		destiny->list[i]->rank = source->list[i]->rank;
-		destiny->list[i]->size = source->list[i]->size;
-	}
-	destiny->max_capacity = source->max_capacity;//Espera que de todo jeito sejam do mesmo tamanho
-	destiny->size = source->size;
-	destiny->id_front = source->id_front;
-}
-*/
+
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
@@ -698,18 +670,8 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 
 	//Se restantes_adicionar > 0 então o front atual não comporta todos os elementos de parent
 	if (restantes_adicionar > 0){
-		int sz = frontsList->list[lastPosition]->size;
 		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
 		for (int k = 0; k < restantes_adicionar; k++){
-			/*if (frontsList->list[lastPosition]->list[k] == NULL){
-			  printf("frontsList->list[lastPosition]->list[%d] eh NULL1\n", k);
-			  printf("tamanho de fronts eh %d\n", frontsList->list[lastPosition]->size);
-			  printf("tamanho de fronts anterior eh %d\n", frontsList->list[lastPosition-1]->size);
-			  printf("tamanho de fronts proximo eh %d\n", frontsList->list[lastPosition+1]->size);
-			  printf("restantes a adicionar eh %d\n", restantes_adicionar);
-			  printf("lastposition %d\n", lastPosition);
-			  printf("frontsList->size %d------\n", frontsList->size);
-			}*/
 			parents->list[parents->size++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
 		}
 		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
@@ -748,53 +710,32 @@ void merge(Population *p1, Population *p2, Population *big_population){
 		}
 	}
 	big_population->size = p1->size + p2->size;
-	
-	//printf("big_population->size = %d", big_population->size);
-	//printf(" p1->size = %d", p1->size);
-	//printf(" p2->size = %d\n", p2->size);
 }
-
-/*
-Individuo * new_individuo_by_individuo(Individuo *p, Graph * g){
-	Individuo *idv = new_individuo(g->drivers, g->riders);
-
-	idv->crowding_distance = p->crowding_distance;
-	idv->dominated_by_count = p->dominated_by_count;
-	for (int k = 0; k < QTD_OBJECTIVES; k++){
-		idv->objetivos[k] = p->objetivos[k];
-	}
-	for (int r = 0; r < p->size; r++){
-		idv->cromossomo[r].length = p->cromossomo[r].length;
-		for (int w = 0; w < p->cromossomo[r].length; w++){
-			idv->cromossomo[r].list[w].is_source = p->cromossomo[r].list[w].is_source;
-			idv->cromossomo[r].list[w].r = p->cromossomo[r].list[w].r;
-			idv->cromossomo[r].list[w].time = p->cromossomo[r].list[w].time;
-			idv->cromossomo[r].list[w].waiting_time = p->cromossomo[r].list[w].waiting_time;
-		}
-	}
-
-	idv->size = p->size;
-
-	return idv;
-}
-*/
 
 /*seleção por torneio, k = 2*/
 Individuo * tournamentSelection(Population * parents){
 	Individuo * best = NULL;
 	for (int i = 0; i < 2; i++){
 		int pos = rand() % parents->size;
-		//int pos = 27;
 		Individuo * outro = parents->list[pos];
-		if (outro == NULL){
-			printf("outro é nulo\n");
-			printf("parents->size %d\n", parents->size);
-			printf("pos %d\n", pos);
-		}
 		if (best == NULL || crowded_comparison_operator(outro, best))
 			best = outro;
 	}
 	return best;
+}
+
+/** Copia as rotas do indivíduo origem pro indivíduo destino */
+void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
+	for (int i = start; i < end; i++){
+		Rota rota = origin->cromossomo[i];
+		for (int j = 0; j < rota.length; j++){
+			destiny->cromossomo[i].list[j].r = rota.list[j].r;
+			destiny->cromossomo[i].list[j].is_source = rota.list[j].is_source;
+			destiny->cromossomo[i].list[j].service_time = rota.list[j].service_time;
+			destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
+		}
+	}
+
 }
 
 void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, float crossoverProbability){
@@ -806,85 +747,14 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 	float accept = (float)rand() / RAND_MAX;
 
 	if (accept < crossoverProbability){
-		int i = 0;
-		for (i = 0; i < crossoverPoint; i++){
-			Rota rota = parent2->cromossomo[i];
-			//Copiando os services da rota
-			for (int j = 0; j < parent2->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring1->cromossomo[i].length = parent2->cromossomo[i].length;
-		}
-		for (i = crossoverPoint; i < rotaSize; i++){
-			Rota rota = parent1->cromossomo[i];
-			for (int j = 0; j < parent1->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
-		}
-		for (i = 0; i < crossoverPoint; i++){
-			Rota rota = parent1->cromossomo[i];
-			//Copiando os services da rota
-			for (int j = 0; j < parent1->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring2->cromossomo[i].length = parent1->cromossomo[i].length;
-		}
-		for (i = crossoverPoint; i < rotaSize; i++){
-			Rota rota = parent2->cromossomo[i];
-			for (int j = 0; j < parent2->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;
-		}
-
+		copy_rota(parent2, offspring1, 0, crossoverPoint);
+		copy_rota(parent1, offspring1, crossoverPoint, rotaSize);
+		copy_rota(parent1, offspring2, 0, crossoverPoint);
+		copy_rota(parent2, offspring2, crossoverPoint, rotaSize);
 	}
 	else{
-		int i = 0;
-		for (i = 0; i < rotaSize; i++){
-			Rota rota = parent1->cromossomo[i];
-			for (int j = 0; j < parent1->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring1->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring1->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring1->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring1->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring1->cromossomo[i].length = parent1->cromossomo[i].length;
-		}
-		for (i = 0; i < rotaSize; i++){
-			Rota rota = parent2->cromossomo[i];
-			for (int j = 0; j < parent2->cromossomo[i].length; j++){
-				if (rota.list[j].r == NULL)
-					printf("é nulo\n");
-				offspring2->cromossomo[i].list[j].r = rota.list[j].r;
-				offspring2->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-				offspring2->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-				offspring2->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-			}
-			offspring2->cromossomo[i].length = parent2->cromossomo[i].length;
-		}
+		copy_rota(parent1, offspring1, 0, rotaSize);
+		copy_rota(parent2, offspring2, 0, rotaSize);
 	}
 }
 
@@ -935,7 +805,6 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 	int i = 0;
 	while (offspring->size < parents->size){
 
-		//printf("Passo %d, parentsize %d offspringsize %d \n", i, parents->size, offspring->size);
 		Individuo *parent1 = tournamentSelection(parents);
 		Individuo *parent2 = tournamentSelection(parents);
 
