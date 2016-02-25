@@ -56,8 +56,6 @@ int main(int argc,  char** argv){
 	int i = 0;
 	while(i < ITERATIONS){
 		printf("Iteracao %d...\n", i);
-		if (i == 3)
-			printf("teste");
 		evaluate_objective_functions_pop(children, g);
 		merge(parents, children, big_population);
 		fast_nondominated_sort(big_population, frontsList);

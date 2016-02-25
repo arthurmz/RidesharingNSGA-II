@@ -69,8 +69,6 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		population->list[i]->dominates_list_count = 0;
 	}
 	
-	//int count_reps =0;//verificar quantas vezes add_Individuo_front foi chamado
-
 	//Primeiro passo, computando as dominancias
 	for (int i = 0; i < population->size; i++){
 		Individuo *a = population->list[i];
@@ -87,15 +85,9 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		if (a->dominated_by_count == 0){
 			a->rank = 0;
 			add_Individuo_front(fronts, a);
-			//count_reps++;
 		}
 	}
 	
-	/*printf("primeiro front, k = %d; ", count_reps);
-	printf("fronts->size ANTES: %d; \n", fronts->size);
-	printf("front_i->size %d; \n", fronts->list[0]->size);
-
-	 */
 	int index_front = 0;
 	//Iterando enquanto existirem novos fronts
 	while (index_front < fronts->size){
@@ -109,7 +101,6 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 				if (indv_dominated->dominated_by_count > 0){
 					indv_dominated->dominated_by_count--;
 				}
-				//printf("idv (%d, %d) dom_count = %d\n", i, k, indv_dominated->dominated_by_count);
 				if (indv_dominated->dominated_by_count == 0){
 					indv_dominated->rank = index_front+1;
 					add_Individuo_front(fronts, indv_dominated);
@@ -120,17 +111,6 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 		}
 		index_front++;
 	}
-	
-	/*
-	int totalFrontListC = 0;
-	for (int i = 0; i < fronts->size; i++){
-		totalFrontListC += fronts->list[i]->size;
-	}*/
-
-	//printf("fim dos front, count_reps = %d, totalFrontListC = %d; index_front = %d; fronts->size = %d\n", count_reps, totalFrontListC, index_front, fronts->size);
-
-
-
 }
 
 /*Pra poder usar a função qsort com N objetivos,
@@ -235,8 +215,8 @@ void crowding_distance_assignment(Population *pop){
  * precisamos implementar os n algoritmos de compare*/
 int compareByCrowdingDistanceMax(const void *p, const void *q) {
     int ret;
-    Individuo * x = (Individuo *)p;
-    Individuo * y = (Individuo *)q;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
     if (x->crowding_distance == y->crowding_distance)
         ret = 0;
     else if (x->crowding_distance > y->crowding_distance)
