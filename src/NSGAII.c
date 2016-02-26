@@ -418,6 +418,9 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		rota->list[i+1] = rota->list[i];
 	}
 
+	if (carona == NULL)
+		printf("eita!");
+
 	//Insere o conteúdo do novo carona
 	rota->list[posicao_insercao].r = carona;
 	rota->list[posicao_insercao].is_source = true;
@@ -546,6 +549,8 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 
 	for (int z = 0; z < qtd_caronas_inserir; z++){
 		Request * carona = request->matchable_riders_list[index_array2[z]];
+		if (carona->driver)
+			printf("eita!!");
 		int posicao_inicial = 1 + (rand () % (rota->length-1));
 		int offset = 1;//TODO, variar o offset
 		if (!carona->matched)
@@ -555,11 +560,15 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 
 /*Gera um indivíduo preenchido com os motoristas e
  * caronas aleatórias, caso insereCaronasAleatorias seja true
+ *
+ * index_array[]: Aleatoriza a ORDEM em que as rotas serão preenchidas
  */
 Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias){
 	Individuo *idv = new_individuo(g->drivers, g->riders);
 
-	for (int j = 0; j < g->drivers ; j++){//pra cada uma das rotas
+	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
+		//int j = index_array[x];
+		int j = x;
 		Rota * rota = &idv->cromossomo[j];
 		Request * driver = &g->request_list[j];
 

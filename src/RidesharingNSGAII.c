@@ -45,11 +45,12 @@ int main(int argc,  char** argv){
 
 	/*============================================*/
 	/*Configurando o index_array usado na aleatorização
-	 * da ordem de leitura dos caronas*/
-	int index_array[g->riders];
-	for (int l = 0; l < g->riders; l++){
+	 * da ordem de leitura DAS ROTAS*/
+	int index_array[g->drivers];
+	for (int l = 0; l < g->drivers; l++){
 		index_array[l] = l;
 	}
+	shuffle(index_array, g->drivers);
 
 	/*Calculando os caronas que são combináveis para cada motorista*/
 	Individuo * individuo_teste = generate_random_individuo(g, index_array, false);
@@ -57,6 +58,8 @@ int main(int argc,  char** argv){
 		Request * motoristaGrafo = &g->request_list[i];
 		for (int j = g->drivers; j < g->total_requests; j++){
 			Request * carona = &g->request_list[j];
+			if (carona->driver)
+				printf("eita!!");
 			Rota * rotaIndividuoTeste = &individuo_teste->cromossomo[i];
 			if ( insere_carona_rota(rotaIndividuoTeste, carona, 1, 1) ){
 				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
@@ -64,6 +67,21 @@ int main(int argc,  char** argv){
 			}
 		}
 	}
+
+	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
+	int qtd = 0;
+	printf("quantos matches cada motorista consegue\n");
+	for (int i = 0; i < g->drivers; i++){
+		if (g->request_list[i].matchable_riders > 0)
+			qtd++;
+		printf("%d: ",g->request_list[i].matchable_riders);
+		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
+			printf("%d ", g->request_list[i].matchable_riders_list[j]->req_no);
+		}
+		printf("\n");
+	}
+
+	printf("qtd mínima que deveria conseguir: %d\n", qtd);
 
 	/*============================================*/
 
