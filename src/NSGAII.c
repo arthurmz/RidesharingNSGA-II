@@ -242,6 +242,12 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 	g->drivers = drivers;
 	g->riders = riders;
 	g->total_requests = total_requests;
+
+	for (int i = 0; i < total_requests; i++){
+		g->request_list[i].matchable_riders = 0;
+		if (i < drivers)
+			g->request_list[i].matchable_riders_list = calloc(riders, sizeof(Request*));
+	}
 	return g;
 }
 
@@ -358,12 +364,9 @@ bool is_tempos_respeitados(Rota *rota){
 bool is_rota_valida(Rota *rota){
 
 	/*Verificando se os tempos de chegada em cada ponto atende às janelas de tempo de cada request (Driver e Rider)*/
-	bool janela_tempo = is_dentro_janela_tempo(rota);
-	bool carga_dentro_limite = is_carga_dentro_limite(rota);
-	bool tempos_respeitados = is_tempos_respeitados(rota);
-	bool distancia_motorista_respeitada = is_distancia_motorista_respeitada(rota);
-
-	return janela_tempo && carga_dentro_limite && tempos_respeitados && distancia_motorista_respeitada;
+	if ( !is_dentro_janela_tempo(rota) || !is_carga_dentro_limite(rota) || !is_tempos_respeitados(rota) || !is_distancia_motorista_respeitada(rota) )
+		return false;
+	return true;
 }
 
 /*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
@@ -482,9 +485,8 @@ void clean_riders_matches(Graph *g){
 void evaluate_objective_functions_pop(Population* p, Graph *g){
 	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
 		evaluate_objective_functions(p->list[i], g);
-		clean_riders_matches(g);
+		//clean_riders_matches(g);
 	}
-	//crowding_distance_assignment(p);
 }
 
 void evaluate_objective_functions(Individuo *idv, Graph *g){
@@ -527,73 +529,70 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
-void insere_carona_aleatoria_rota(int index_array[], Graph *g, Rota* rota, int tentativas){
-	int qtd_caronas_inserir = VEHICLE_CAPACITY;
-	shuffle(index_array, g->riders);
+void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
+	Request * request = &g->request_list[rota->id];
 
-	for (int z = 0; z < g->riders; z++){
-		if (qtd_caronas_inserir == 0 || tentativas == 0) break;
-		Request * carona = &g->request_list[index_array[z]];
-		if (carona->matched) {
-			tentativas--;
-			continue;
-		}
+	int qtd_caronas_inserir = request->matchable_riders;
+	if (qtd_caronas_inserir == 0) return;
+	/*Configurando o index_array usado na aleatorização
+	 * da ordem de leitura dos caronas*/
+	int index_array2[qtd_caronas_inserir];
+	for (int l = 0; l < qtd_caronas_inserir; l++){
+		index_array2[l] = l;
+	}
 
+	//int qtd_caronas_inserir = VEHICLE_CAPACITY;
+	shuffle(index_array2, qtd_caronas_inserir);
+
+	for (int z = 0; z < qtd_caronas_inserir; z++){
+		Request * carona = request->matchable_riders_list[index_array2[z]];
 		int posicao_inicial = 1 + (rand () % (rota->length-1));
 		int offset = 1;//TODO, variar o offset
-
-		bool conseguiu = insere_carona_rota(rota, carona, posicao_inicial, offset);
-
-		if (conseguiu){
-			qtd_caronas_inserir--;
-		}
-		else{
-			tentativas--;
-		}
+		if (!carona->matched)
+			insere_carona_rota(rota, carona, posicao_inicial, offset);
 	}
 }
 
+/*Gera um indivíduo preenchido com os motoristas e
+ * caronas aleatórias, caso insereCaronasAleatorias seja true
+ */
+Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias){
+	Individuo *idv = new_individuo(g->drivers, g->riders);
+
+	for (int j = 0; j < g->drivers ; j++){//pra cada uma das rotas
+		Rota * rota = &idv->cromossomo[j];
+		Request * driver = &g->request_list[j];
+
+		//Insere o motorista na rota
+		rota->list[0].r = driver;
+		rota->list[0].is_source = true;
+		rota->list[0].service_time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
+		rota->list[0].offset = 1;//Informa que o destino está logo à frente
+		rota->list[1].r = driver;
+		rota->list[1].is_source = false;
+		rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
+		rota->length = 2;
+
+		if (insereCaronasAleatorias)
+			insere_carona_aleatoria_rota(g, rota);
+	}
+	//Depois de inserir todas as rotas, limpa a lista de matches
+	//Para que o próximo indivíduo possa usa-las
+	if (insereCaronasAleatorias)
+		clean_riders_matches(g);
+
+	return idv;
+}
 
 /*Inicia a população na memória e então:
  * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
  * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
-Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias){
+Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias){
 	Population *p = (Population*) new_empty_population(size);
 
-	/*TODO inserir sempre os indivíduos sem matchs*/
-	int index_array[g->riders];
-	for (int l = 0; l < g->riders; l++){
-		index_array[l] = l;
-	}
-
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
-		Individuo *idv = new_individuo(g->drivers, g->riders);
-		p->list[i] = idv;
-		p->size++;
-
-		for (int j = 0; j < g->drivers ; j++){//pra cada uma das rotas
-			Rota * rota = &idv->cromossomo[j];
-			Request * driver = &g->request_list[j];
-			if (driver == NULL)
-				printf("Driver é nulo\n");
-
-			//Insere o motorista na rota
-			rota->list[0].r = driver;
-			rota->list[0].is_source = true;
-			rota->list[0].service_time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
-			rota->list[0].offset = 1;//Informa que o destino está logo à frente
-			rota->list[1].r = driver;
-			rota->list[1].is_source = false;
-			rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
-			rota->length = 2;
-
-			if (insereCaronasAleatorias)
-				insere_carona_aleatoria_rota(index_array, g, rota, 20);
-		}
-		//Depois de inserir todas as rotas, limpa a lista de matches
-		//Para que o próximo indivíduo possa usa-las
-		if (insereCaronasAleatorias)
-			clean_riders_matches(g);
+		Individuo *idv = generate_random_individuo(g, index_array, insereCaronasAleatorias);
+		p->list[p->size++] = idv;
 	}
 	return p;
 }
@@ -758,13 +757,12 @@ void repair(Individuo *offspring, Graph *g, int index_array[], int position){
 					offset++;
 				}
 				desfaz_insercao_carona_rota(rota, j, offset);
-				//Nesse ponto, depois de remover, a rota vai estar ok
-				insere_carona_aleatoria_rota(index_array, g, rota, 5);
 			}
 			else{
 				rota->list[j].r->matched = true;
 			}
 		}
+		insere_carona_aleatoria_rota(g, rota);
 	}
 }
 

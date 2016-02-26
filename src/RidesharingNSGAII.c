@@ -32,7 +32,7 @@ int main(int argc,  char** argv){
 	int POPULATION_SIZE;
 	int ITERATIONS;
 	int PRINT_ALL_GENERATIONS = 0;
-	float crossoverProbability = 0.75;
+	float crossoverProbability = 0.7;
 	float mutationProbability = 0.1;
 	char *filename = argv[1];
 
@@ -42,6 +42,29 @@ int main(int argc,  char** argv){
 		sscanf(argv[4], "%d", &PRINT_ALL_GENERATIONS);
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
+
+	/*============================================*/
+	/*Configurando o index_array usado na aleatorização
+	 * da ordem de leitura dos caronas*/
+	int index_array[g->riders];
+	for (int l = 0; l < g->riders; l++){
+		index_array[l] = l;
+	}
+
+	/*Calculando os caronas que são combináveis para cada motorista*/
+	Individuo * individuo_teste = generate_random_individuo(g, index_array, false);
+	for (int i = 0; i < g->drivers; i++){
+		Request * motoristaGrafo = &g->request_list[i];
+		for (int j = g->drivers; j < g->total_requests; j++){
+			Request * carona = &g->request_list[j];
+			Rota * rotaIndividuoTeste = &individuo_teste->cromossomo[i];
+			if ( insere_carona_rota(rotaIndividuoTeste, carona, 1, 1) ){
+				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
+				desfaz_insercao_carona_rota(rotaIndividuoTeste, 1, 1);
+			}
+		}
+	}
+
 	/*============================================*/
 
 	
@@ -49,8 +72,8 @@ int main(int argc,  char** argv){
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 
 	
-	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
-	Population * children = generate_random_population(POPULATION_SIZE, g, false);
+	Population * parents = generate_random_population(POPULATION_SIZE, g, index_array, true);
+	Population * children = generate_random_population(POPULATION_SIZE, g, index_array, false);
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;

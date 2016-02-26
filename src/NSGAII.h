@@ -26,6 +26,9 @@ typedef struct Request{
 	double pickup_latest_time;
 	double delivery_earliest_time;
 	double delivery_latest_time;
+
+	int matchable_riders;//Somente para o caso do motorista: O número de riders que podem fazer match
+	struct Request ** matchable_riders_list;//Só é preenchida se este for um Driver
 }Request;
 
 /*Gene of a solution*/
@@ -46,6 +49,7 @@ typedef struct Service{
 typedef struct Rota{
 	Service *list;
 	int length;
+	int id;//Identifica o motorista da rota na estrutura GRAPH
 }Rota;
 
 typedef struct Individuo{
@@ -84,6 +88,8 @@ typedef struct Fronts{
 
 
 /*====================Graph=====================================================*/
+/*Os primeiros DRIVERS requests são requisições de motoristas,
+ * o restante são requisições de caronas*/
 typedef struct Graph{
 	Request *request_list;//Lista de requests
 	int drivers;
@@ -93,7 +99,8 @@ typedef struct Graph{
 
 
 Graph *new_graph(int drivers, int riders, int total_requests);
-Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias);
+Individuo *generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias);
+Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
@@ -102,7 +109,7 @@ void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
-void insere_carona_rota_aleatorias(int index_array[], Graph *g, Rota* rota, int tentativas);
+void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);

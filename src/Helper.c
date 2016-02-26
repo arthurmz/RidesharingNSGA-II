@@ -31,29 +31,6 @@ Fronts* new_front_list(int max_capacity){
 	return f;
 }
 
-/*
-void empty_front_list(Fronts * f){
-	int max = f->list[0]->max_capacity;
-	for (int i = 0; i < max; i++){
-		for (int j = 0; j < max; j++){
-			f->list[i]->size = 0;
-			f->list[i]->list[j] = NULL;
-		}
-	}
-}*/
-
-/*
-void clean_front_list(Fronts * f){
-	for (int i = 0; i < f->size; i++){
-		Population *fronti = f->list[i];
-		fronti->id_front = 0;
-		fronti->size = 0;
-		for (int j = 0; j < fronti->size; j++){
-			fronti->list[j] = NULL;
-		}
-	}
-	f->size = 0;
-}*/
 
 /*TESTADO OK*/
 Individuo * new_individuo(int drivers_qtd, int riders_qtd){
@@ -170,7 +147,6 @@ Graph * parse_file(char *filename){
 	}
 
 	fclose(fp);
-
 	return g;
 }
 
