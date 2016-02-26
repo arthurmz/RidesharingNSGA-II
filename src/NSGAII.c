@@ -411,15 +411,20 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	int ultimaPos = rota->length-1;
 	//Empurra todo mundo depois da posição de inserção
 	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		rota->list[i+1] = rota->list[i];
+		rota->list[i+1].is_source = rota->list[i].is_source;
+		rota->list[i+1].offset = rota->list[i].offset;
+		rota->list[i+1].r = rota->list[i].r;
+		rota->list[i+1].service_time = rota->list[i].service_time;
+		rota->list[i+1].waiting_time = rota->list[i].waiting_time;
 	}
 	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
-		rota->list[i+1] = rota->list[i];
+		rota->list[i+1].is_source = rota->list[i].is_source;
+		rota->list[i+1].offset = rota->list[i].offset;
+		rota->list[i+1].r = rota->list[i].r;
+		rota->list[i+1].service_time = rota->list[i].service_time;
+		rota->list[i+1].waiting_time = rota->list[i].waiting_time;
 	}
-
-	if (carona == NULL)
-		printf("eita!");
 
 	//Insere o conteúdo do novo carona
 	rota->list[posicao_insercao].r = carona;
@@ -549,8 +554,6 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 
 	for (int z = 0; z < qtd_caronas_inserir; z++){
 		Request * carona = request->matchable_riders_list[index_array2[z]];
-		if (carona->driver)
-			printf("eita!!");
 		int posicao_inicial = 1 + (rand () % (rota->length-1));
 		int offset = 1;//TODO, variar o offset
 		if (!carona->matched)
@@ -617,17 +620,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 	int lastPosition = 0;
 	parents->size = 0;
 	offsprings->size = 0;
-	
-	
-	//Confirmando, provavelmente frontsList ta vindo com menos elementos do que o necessario pra encher parents
-	/*
-	int total = 0;
-	for (int i = 0; i < frontsList->size; i++){
-	  total += frontsList->list[i]->size;
-	}*/
-	
-	//if (total != 100)
-	//printf("-----------------totalFRONTSLIST = %d ---------------\n", total);
+
 
 	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
 	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
@@ -638,9 +631,6 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 		crowding_distance_assignment(front_i);
 		if (parents->max_capacity - parents->size >= front_i->size){
 			for (int j = 0; j < front_i->size; j++){
-				if(front_i->list[j] == NULL){
-				  printf("front_i->list[j] eh NULL\n");
-				}
 				parents->list[parents->size++] = front_i->list[j];
 			}
 		}
@@ -648,11 +638,6 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 			break;
 		}
 	}
-	
-	/*while (parents->size < parents->max_capacity){
-		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
-
-	}*/
 
 	int restantes_adicionar = parents->max_capacity - parents->size;//Qtd que tem que adicionar aos pais
 
@@ -664,9 +649,6 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 		}
 		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
 		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
-			if (frontsList->list[lastPosition]->list[k] == NULL){
-			  printf("frontsList->list[lastPosition]->list[k] eh NULL2\n");
-			}
 			offsprings->list[offsprings->size++] = frontsList->list[lastPosition]->list[k];
 		}
 		lastPosition++;
@@ -767,7 +749,7 @@ void repair(Individuo *offspring, Graph *g, int index_array[], int position){
 				}
 				desfaz_insercao_carona_rota(rota, j, offset);
 			}
-			else{
+			else if (!rota->list[j].r->driver){
 				rota->list[j].r->matched = true;
 			}
 		}

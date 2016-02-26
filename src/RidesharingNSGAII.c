@@ -58,8 +58,6 @@ int main(int argc,  char** argv){
 		Request * motoristaGrafo = &g->request_list[i];
 		for (int j = g->drivers; j < g->total_requests; j++){
 			Request * carona = &g->request_list[j];
-			if (carona->driver)
-				printf("eita!!");
 			Rota * rotaIndividuoTeste = &individuo_teste->cromossomo[i];
 			if ( insere_carona_rota(rotaIndividuoTeste, carona, 1, 1) ){
 				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
@@ -68,8 +66,10 @@ int main(int argc,  char** argv){
 		}
 	}
 
+
+
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
-	int qtd = 0;
+	/*int qtd = 0;
 	printf("quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
 		if (g->request_list[i].matchable_riders > 0)
@@ -81,7 +81,7 @@ int main(int argc,  char** argv){
 		printf("\n");
 	}
 
-	printf("qtd mínima que deveria conseguir: %d\n", qtd);
+	printf("qtd mínima que deveria conseguir: %d\n", qtd);*/
 
 	/*============================================*/
 

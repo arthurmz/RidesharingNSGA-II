@@ -7,6 +7,8 @@
 
 #include "NSGAII.h"
 #include "Helper.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 
 typedef struct Simples{
