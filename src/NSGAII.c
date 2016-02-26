@@ -570,8 +570,7 @@ Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCa
 	Individuo *idv = new_individuo(g->drivers, g->riders);
 
 	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
-		//int j = index_array[x];
-		int j = x;
+		int j = index_array[x];
 		Rota * rota = &idv->cromossomo[j];
 		Request * driver = &g->request_list[j];
 
