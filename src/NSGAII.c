@@ -167,17 +167,9 @@ int compare3(const void *p, const void *q) {
     return ret;
 }
 
-
-
-
-
-/*Deve ser chamado depois de determinar as funções objetivo*/
-void crowding_distance_assignment(Population *pop){
-	for (int i = 0; i < pop->size; i++){
-		pop->list[i]->crowding_distance = 0;
-	}
-	for (int k = 0; k < QTD_OBJECTIVES; k++){
-		switch(k){
+/*Ordena a população de acordo com o objetivo 0, 1, 2, 3*/
+void sort_by_objective(Population *pop, int obj){
+	switch(obj){
 		case 0:
 			qsort(pop->list, pop->size, sizeof(Individuo*), compare0 );
 			break;
@@ -190,7 +182,18 @@ void crowding_distance_assignment(Population *pop){
 		case 3:
 			qsort(pop->list, pop->size, sizeof(Individuo*), compare3 );
 			break;
-		}
+	}
+}
+
+
+/*Deve ser chamado depois de determinar as funções objetivo*/
+void crowding_distance_assignment(Population *pop){
+	for (int i = 0; i < pop->size; i++){
+		pop->list[i]->crowding_distance = 0;
+	}
+	for (int k = 0; k < QTD_OBJECTIVES; k++){
+
+		sort_by_objective(pop, k);
 
 		pop->list[0]->crowding_distance = FLT_MAX;
 		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
@@ -225,6 +228,8 @@ int compareByCrowdingDistanceMax(const void *p, const void *q) {
         ret = 1;
     return ret;
 }
+
+
 
 void sort_by_crowding_distance_assignment(Population *front){
 	//crowding_distance_assignment(front); //jah eh feito antes

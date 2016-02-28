@@ -118,6 +118,7 @@ void free_population(Population *population);
 void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability );
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
+void sort_by_objective(Population *pop, int obj);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);

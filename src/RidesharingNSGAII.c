@@ -119,10 +119,11 @@ int main(int argc,  char** argv){
 
 	evaluate_objective_functions_pop(frontsList->list[0], g);
 	printf("Imprimindo o ultimo front obtido:\n");
+	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
 
-	printf("Imprimindo o front children\n");
-	print(children);
+	//printf("Imprimindo o front children\n");
+	//print(children);
 	//complete_free_population(parents);
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;
