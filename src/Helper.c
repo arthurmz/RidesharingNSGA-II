@@ -95,6 +95,21 @@ double time_between_requests(Request *a, Request *b){
 	return distance / VEHICLE_SPEED * 60;
 }
 
+/*Constroi um novo grafo em memória*/
+Graph *new_graph(int drivers, int riders, int total_requests){
+	Graph * g = calloc(1, sizeof(Graph));
+	g->request_list = calloc(total_requests, sizeof(Request));
+	g->drivers = drivers;
+	g->riders = riders;
+	g->total_requests = total_requests;
+
+	for (int i = 0; i < total_requests; i++){
+		g->request_list[i].matchable_riders = 0;
+		if (i < drivers)
+			g->request_list[i].matchable_riders_list = calloc(riders, sizeof(Request*));
+	}
+	return g;
+}
 
 Graph * parse_file(char *filename){
 	FILE *fp=fopen(filename, "r");

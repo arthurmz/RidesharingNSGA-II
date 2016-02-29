@@ -32,14 +32,18 @@ int main(int argc,  char** argv){
 	int POPULATION_SIZE;
 	int ITERATIONS;
 	int PRINT_ALL_GENERATIONS = 0;
-	float crossoverProbability = 0.7;
+	float crossoverProbability = 0.75;
 	float mutationProbability = 0.1;
 	char *filename = argv[1];
 
 	sscanf(argv[2], "%d", &POPULATION_SIZE);
 	sscanf(argv[3], "%d", &ITERATIONS);
 	if (argc >= 5)
-		sscanf(argv[4], "%d", &PRINT_ALL_GENERATIONS);
+		sscanf(argv[4], "%f", &crossoverProbability);
+	if (argc >= 6)
+			sscanf(argv[5], "%f", &mutationProbability);
+	if (argc >= 7)
+		sscanf(argv[6], "%d", &PRINT_ALL_GENERATIONS);
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
@@ -69,7 +73,7 @@ int main(int argc,  char** argv){
 
 
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
-	/*int qtd = 0;
+	int qtd = 0;
 	printf("quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
 		if (g->request_list[i].matchable_riders > 0)
@@ -81,7 +85,7 @@ int main(int argc,  char** argv){
 		printf("\n");
 	}
 
-	printf("qtd mínima que deveria conseguir: %d\n", qtd);*/
+	printf("qtd mínima que deveria conseguir: %d\n", qtd);
 
 	/*============================================*/
 

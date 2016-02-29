@@ -98,7 +98,7 @@ typedef struct Graph{
 }Graph;
 
 
-Graph *new_graph(int drivers, int riders, int total_requests);
+//Graph *new_graph(int drivers, int riders, int total_requests);
 Individuo *generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias);
 Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias);
 void add_Individuo_front(Fronts * fronts, Individuo *p);

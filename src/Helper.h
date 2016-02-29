@@ -29,6 +29,8 @@ void free_population(Population *population);
 void complete_free_population(Population *population);
 void free_population_fronts(Fronts * f);
 void print(Population *p);
+Graph *new_graph(int drivers, int riders, int total_requests);
+
 
 
 #endif /* HELPER_H_ */

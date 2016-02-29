@@ -240,22 +240,6 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
 }
 
-/*Constroi um novo grafo em memória*/
-Graph *new_graph(int drivers, int riders, int total_requests){
-	Graph * g = calloc(1, sizeof(Graph));
-	g->request_list = calloc(total_requests, sizeof(Request));
-	g->drivers = drivers;
-	g->riders = riders;
-	g->total_requests = total_requests;
-
-	for (int i = 0; i < total_requests; i++){
-		g->request_list[i].matchable_riders = 0;
-		if (i < drivers)
-			g->request_list[i].matchable_riders_list = calloc(riders, sizeof(Request*));
-	}
-	return g;
-}
-
 
 bool is_dentro_janela_tempo(Rota * rota){
 
@@ -316,7 +300,7 @@ bool is_distancia_motorista_respeitada(Rota * rota){
 }
 
 
-/*Calculoa o tempo gasto para ir do ponto i ao ponto j, através de cada
+/*Calcula o tempo gasto para ir do ponto i ao ponto j, através de cada
  * request da rota.*/
 double tempo_gasto_rota(Rota *rota, int i, int j){
 	double accTime =0;
@@ -450,28 +434,6 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		return false;
 	}
 	return true;
-}
-
-/*Pega carona aleatória não visitada
- * Por enquanto não será usado*/
-Request *get_carona_aleatoria(Graph *g){
-	int min = g->drivers;
-	int max = g->riders;
-
-	int rnd = min + (rand() % max);
-	Request * carona = &g->request_list[rnd];
-
-	if (carona->matched){
-		carona = NULL;
-		Request * carona_tmp = &g->request_list[g->drivers];
-		for (int i = g->drivers; i < g->total_requests; i++){
-			if (!carona_tmp->matched){
-				carona = carona_tmp;
-				break;
-			}
-		}
-	}
-	return carona;
 }
 
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
