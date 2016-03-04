@@ -13,6 +13,7 @@
 #include <time.h>
 #include "Helper.h"
 #include "NSGAII.h"
+#include "Calculations.h"
 
 /*Parametros: nome do arquivo
  *
@@ -93,7 +94,6 @@ int main(int argc,  char** argv){
 	
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
-
 	
 	Population * parents = generate_random_population(POPULATION_SIZE, g, index_array, true);
 	Population * children = generate_random_population(POPULATION_SIZE, g, index_array, false);
@@ -127,9 +127,10 @@ int main(int argc,  char** argv){
 	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
 
-	//printf("Imprimindo o front children\n");
-	//print(children);
-	//complete_free_population(parents);
+	dealoc_full_population(parents);
+	dealoc_full_population(children);
+	dealoc_empty_population(big_population);
+	//dealoc_fronts(frontsList); :(
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;
 }

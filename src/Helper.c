@@ -6,7 +6,6 @@
  */
 
 #include "Helper.h"
-#include "StaticVariables.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,6 +47,69 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 	return ind;
 }
 
+/*Gera um indivíduo preenchido com os motoristas e
+ * caronas aleatórias, caso insereCaronasAleatorias seja true
+ *
+ * index_array[]: Aleatoriza a ORDEM em que as rotas serão preenchidas
+ */
+Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias){
+	Individuo *idv = new_individuo(g->drivers, g->riders);
+
+	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
+		int j = index_array[x];
+		Rota * rota = &idv->cromossomo[j];
+		Request * driver = &g->request_list[j];
+
+		//Insere o motorista na rota
+		rota->list[0].r = driver;
+		rota->list[0].is_source = true;
+		rota->list[0].service_time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
+		rota->list[0].offset = 1;//Informa que o destino está logo à frente
+		rota->list[1].r = driver;
+		rota->list[1].is_source = false;
+		rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
+		rota->length = 2;
+
+		if (insereCaronasAleatorias)
+			insere_carona_aleatoria_rota(g, rota);
+	}
+	//Depois de inserir todas as rotas, limpa a lista de matches
+	//Para que o próximo indivíduo possa usa-las
+	if (insereCaronasAleatorias)
+		clean_riders_matches(g);
+
+	return idv;
+}
+
+
+/*Inicia a população na memória e então:
+ * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
+ * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
+Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias){
+	Population *p = (Population*) new_empty_population(size);
+
+	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
+		Individuo *idv = generate_random_individuo(g, index_array, insereCaronasAleatorias);
+		p->list[p->size++] = idv;
+	}
+	return p;
+}
+
+
+/** Copia as rotas do indivíduo origem pro indivíduo destino */
+void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
+	for (int i = start; i < end; i++){
+		Rota rota = origin->cromossomo[i];
+		for (int j = 0; j < rota.length; j++){
+			destiny->cromossomo[i].list[j].r = rota.list[j].r;
+			destiny->cromossomo[i].list[j].is_source = rota.list[j].is_source;
+			destiny->cromossomo[i].list[j].service_time = rota.list[j].service_time;
+			destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
+		}
+	}
+
+}
+
 void complete_free_individuo(Individuo * idv){
 	if (idv != NULL){
 		for (int i = 0; i < idv->size; i++){
@@ -70,31 +132,7 @@ Population* new_empty_population(int max_capacity){
 	return p;
 }
 
-/*Distância em km*/
-double haversine_helper(double lat1, double lon1, double lat2, double lon2){
-	double R = 6372.8;
-	double to_rad = 3.1415926536 / 180;
-	double dLat = to_rad * (lat2 - lat1);
-	double dLon = to_rad * (lon2 - lon1);
 
-	lat1 = to_rad * lat1;
-	lat2 = to_rad * lat2;
-
-	double a = pow (sin(dLat/2),2) + pow(sin(dLon/2),2) * cos(lat1) * cos(lat2);
-	double c = 2 * asin(sqrt(a));
-	return R * c;
-}
-
-double haversine(Request *a, Request *b){
-	return haversine_helper(a->pickup_location_latitude, a->pickup_location_longitude,
-			b->delivery_location_latitude, b->delivery_location_longitude);
-}
-
-/*Tempo em minutos*/
-double time_between_requests(Request *a, Request *b){
-	double distance = haversine(a, b);
-	return distance / VEHICLE_SPEED * 60;
-}
 
 /*Constroi um novo grafo em memória*/
 Graph *new_graph(int drivers, int riders, int total_requests){
@@ -167,16 +205,6 @@ Graph * parse_file(char *filename){
 	return g;
 }
 
-/*
-void dealoc_population(Population *p){
-	if (p != NULL){
-		if (p->list != NULL){
-			free(p->list);
-		}
-		free(p);
-	}
-
-}*/
 
 /*aleatoriza o vetor informado*/
 void shuffle(int *array, int n) {
@@ -192,7 +220,6 @@ void shuffle(int *array, int n) {
 }
 
 
-
 /*Desaloca a população, mantendo os indivíduos alocados*/
 void free_population(Population *population){
 	if (population != NULL){
@@ -203,29 +230,33 @@ void free_population(Population *population){
 }
 
 /*Desaloca a população, desalocando também os indivíduos*/
-void complete_free_population(Population *population){
+void dealoc_full_population(Population *population){
 	if (population != NULL){
 		for (int i = 0; i < population->size; i++){
 			if (population->list[i] != NULL)
 				free(population->list[i]);
 		}
-		//free(population->list); para evitar os crashes
-		//free(population);
+		free(population->list);
+		free(population);
+	}
+}
+
+/*Desaloca a população cujos indivíduos não estão alocados aqui*/
+void dealoc_empty_population(Population *population){
+	if (population != NULL){
+		free(population->list);
+		free(population);
 	}
 }
 
 /*Desaloca a população da memória, sem desalocar o front!!!*/
-void free_population_fronts(Fronts * f){
-	if (f != NULL){
-		for (int i = 0; i < f->size; f++){
-			if (f->list[i] != NULL)
-				complete_free_population(f->list[i]);
-		}
-		//if (f->list != NULL && f->list != 0xabababab)
-			//free(f->list);
-		if (f != NULL)
-			free(f);
+void dealoc_fronts(Fronts * front){
+	for (int i = 0; i < front->max_capacity; front++){
+		if (front->list[i] != NULL)
+			dealoc_full_population(front->list[i]);
 	}
+	free(front->list);
+	free(front);
 }
 
 
@@ -236,41 +267,4 @@ void print(Population *p){
 	}
 }
 
-
-/**
- * Gera A janela de inserção
- *	Veículo 					A|--------|B             C|-----------|D
- *								 \         \              /           /
- *	Janela de inserção   	      E|--------|F          G|-----------|H
- *	Janela do carona          I|---------|J                    K|-----------|L
- *	Janela real                   M|-----|N                    O|----|P
- *
- *
- * */
-JanelaTempo generate_janela_insercao(JanelaTempo janela, double distanceVehicleSourceRiderSource,  double distanceRiderDestinyVehicleDestiny){
-	JanelaTempo result;
-	result.pickup_earliest_time = janela.pickup_earliest_time + distanceVehicleSourceRiderSource;
-	result.pickup_latest_time = janela.pickup_latest_time + distanceVehicleSourceRiderSource;
-	result.delivery_earliest_time = janela.delivery_earliest_time - distanceRiderDestinyVehicleDestiny;
-	result.delivery_latest_time = janela.delivery_latest_time - distanceRiderDestinyVehicleDestiny;
-	return result;
-}
-
-/**
- * Gera A janela de inserção
- *	Veículo 					A|--------|B             C|-----------|D
- *								 \         \              /           /
- *	Janela de inserção   	      E|--------|F          G|-----------|H
- *	Janela do carona          I|---------|J                    K|-----------|L
- *	Janela real                   M|-----|N                    O|----|P
- *
- * */
-JanelaTempo generate_janela_real(JanelaTempo janelaInsercao, JanelaTempo janelaCarona){
-	JanelaTempo result;
-	result.pickup_earliest_time = fmax(janelaInsercao.pickup_earliest_time, janelaCarona.pickup_earliest_time);
-	result.pickup_latest_time = fmin(janelaInsercao.pickup_latest_time, janelaCarona.pickup_latest_time);
-	result.delivery_earliest_time = fmax(janelaInsercao.delivery_earliest_time, janelaCarona.delivery_earliest_time);
-	result.delivery_latest_time = fmin(janelaInsercao.delivery_latest_time, janelaCarona.delivery_latest_time);
-	return result;
-}
 

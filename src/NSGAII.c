@@ -8,10 +8,9 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "StaticVariables.h"
 #include "Helper.h"
 #include "NSGAII.h"
-
+#include "Calculations.h"
 
 
 /*Adiciona o indivíduo de rank k no front k de FRONTS
@@ -240,139 +239,15 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
 }
 
-
-bool is_dentro_janela_tempo(Rota * rota){
-
-	for (int i = 0; i < rota->length-1; i++){
-		Service *source = &rota->list[i];
-		if (!source->is_source) continue;
-		for (int j = i+1; j < rota->length; j++){
-			Service *destiny = &rota->list[j];
-			if(destiny->is_source || source->r != destiny->r) continue;
-
-			if ( ! ((source->r->pickup_earliest_time <= source->service_time && source->service_time <= source->r->pickup_latest_time)
-				&& (destiny->r->delivery_earliest_time <= destiny->service_time && destiny->service_time <= destiny->r->delivery_latest_time)))
-				return false;
-		}
-	}
-	return true;
-
-}
-/*Verifica se durante toda a rota a carga permanece dentro do limite
- * e se todos os passageiros embarcados são desembarcados, terminando com carga 0*/
-bool is_carga_dentro_limite(Rota *rota){
-	int temp_load = 0;
-	for (int i = 1; i < rota->length-1; i++){
-		Service *a = &rota->list[i];
-
-		if(a->is_source){
-			temp_load += RIDER_DEMAND;
-			if (temp_load > VEHICLE_CAPACITY) return false;
-		}
-		else{
-			temp_load -= RIDER_DEMAND;
-			if (temp_load < 0) return false;
-		}
-	}
-
-	if (temp_load != 0) return false;
-	return true;
-}
-
-double distancia_percorrida(Rota * rota){
-	double accDistance =0;
-	for (int i = 0; i < rota->length -1; i++){
-		Request *a = rota->list[i].r;
-		Request *b = rota->list[i+1].r;
-		accDistance += haversine(a,b);
-	}
-
-	return accDistance;
-}
-
-/*Verifica se a distancia percorrida pelo motorista é respeitada*/
-bool is_distancia_motorista_respeitada(Rota * rota){
-	Service * source = &rota->list[0];
-	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
-	double accDistance = distancia_percorrida(rota);
-	return accDistance <= MTD;
-}
-
-
-/*Calcula o tempo gasto para ir do ponto i ao ponto j, através de cada
- * request da rota.*/
-double tempo_gasto_rota(Rota *rota, int i, int j){
-	double accTime =0;
-	for (int k = i; k < j; k++){
-		Request *a = rota->list[k].r;
-		Request *b = rota->list[k+1].r;
-		accTime += time_between_requests(a,b);
-	}
-	return accTime;
-}
-
-/*Verifica se o tempo do request partindo do índice I e chegando no índice J é respeitado*/
-bool is_tempo_respeitado(Rota *rota, int i, int j){
-	Service * source = &rota->list[i];
-	Service * destiny = &rota->list[j];
-	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
-	double accTime = tempo_gasto_rota(rota, i, j);
-	return accTime <= MTT;
-}
-
-/*Verifica se os tempos de todos os requests nessa rota estão sendo respeitados*/
-bool is_tempos_respeitados(Rota *rota){
-	for (int i = 0; i < rota->length-1; i++){//Pra cada um dos sources
-		Service *source = &rota->list[i];
-		if (!source->is_source) continue;
-		for (int j = i+1; j < rota->length; j++){//Repete o for até encontrar o destino
-			Service *destiny = &rota->list[j];
-			if(destiny->is_source || source->r != destiny->r) continue;
-
-			if (!is_tempo_respeitado(rota, i, j)) return false;
-		}
-	}
-	return true;
-}
-
-
-/*Restrição 2 e 3 do artigo é garantida pois sempre que um carona é adicionado
- * seu destino tbm é adicionado
- * Restrição 4 é garantida pois ao fazer o match o carona não pode ser usado pra outras inserções
- * Restrição 5, uma vez que só pode ser feito match uma vez, tá garantido
- * Restrição 6 tem que garantir que a hora que eu chego no ponto J não pode ser maior do que a
- * soma da hora de chegada no ponto anterior com o tempo de viajgem entre IJ.
- * Restrição 7 tem que garantir que a janela de tempo está sendo satisfeitaa TODO
- * Restrição 8 já é atendida pela forma de inserção do carona
- * Restirção 9 e 10 A carga da rota tem que ser verificada a cada inserção
- * OU seja, tem que verificar que a todo instante a carga está dentro do limite
- * Restrição 11 é garantida pela forma como é feita a inserção
- * Restrição 12 e 13 é a verificação da distancia e tempo do motorista
- * Restrição 14 é a verificação de tempo do carona*/
-bool is_rota_valida(Rota *rota){
-
-	/*Verificando se os tempos de chegada em cada ponto atende às janelas de tempo de cada request (Driver e Rider)*/
-	if ( !is_dentro_janela_tempo(rota) || !is_carga_dentro_limite(rota) || !is_tempos_respeitados(rota) || !is_distancia_motorista_respeitada(rota) )
-		return false;
-	return true;
-}
-
-/*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
- * Considera que o tempo de espera do anterior já está calculado*/
-double calculate_time_at(Service * actual, Service *ant){
-	double next_time = 0;
-	if (ant->is_source){
-		next_time = ant->service_time + ant->r->service_time_at_source + time_between_requests(ant->r, actual->r) + ant->waiting_time;
-	}
-	else{
-		next_time = ant->service_time + ant->r->service_time_at_delivery + time_between_requests(ant->r, actual->r);
-	}
-	return next_time;
-}
-
-/*Atualiza as Horas de chegada e o tempo de espera em cada ponto*/
+/*Atualiza as Horas de chegada e o tempo de espera em cada ponto
+ * O waiting_time da partida do motorista é zero;
+ *
+ *Essa forma de atualizar o tempo é ruim porque destroi as mudanças feitas
+ *pelo operador de mutação
+ * */
 void update_times(Rota *rota){
+	rota->list[0].waiting_time = 0;
+	//rota->list[0].service_time = O servicetime é mantido
 	for (int i = 0; i < rota->length-1; i++){
 		Service *ant = &rota->list[i];
 		Service *actual = &rota->list[i+1];
@@ -385,120 +260,6 @@ void update_times(Rota *rota){
 	}
 }
 
-
-
-
-/** Um novo método de verificação da inserção de uma carona
- * imaginado para ser executado ANTES da inserção de fato.
- * O retorno deste método são os momentos de pickup e delivery
- * que o carona terá.
- * Implementação disto:
- *
-		Veículo 					A|--------|B             C|-----------|D
-									 \         \              /           /
-		Janela de inserção   	      E|--------|F          G|-----------|H
-		Janela do carona          I|---------|J                    K|-----------|L
-		Janela real                   M|-----|N                    O|----|P
-
-
-							 Verificando se dá pra fazer a inserção;
-
-	if (J < E || K  >  H)
-		CARONA INVÁLIDA!, nem calcula a janela real;
-
-	calcula_janela_real;
-	if (N < M || P < O)
-		CARONA INVÁLIDA!
-
-	pickup = M
-	delivery = M + D3;
-	if (delivery > P)
-		CARONA INVÁLIDA!
-	if (delivery < O){
-		MAXeXTRAtIME = 0.3 * D3;
-
-		if (delivery + MAXeXTRAtIME >= O){
-			CARONA VÁLIDA!
-		}
-		else{
-			delivery = O;
-			pickup = delivery + MAXeXTRAtIME - D3;
-			if (pickup > N)
-				CARONA INVÁLIDA!
-		}
-	}
-
-	Se chegou a qui, a carona é válida e seus valores de pickup e delivery são
-	pickup e delivery;
- *
- *
- */
-
-/**
- * Verifica se o carona CARONA pode ser inserido sozinho na rota de VEHICLE.
- * Caso seja possível a função armazena a hora de pickup e delivery mais cedo possível
- * em pickup_result e delivery_result.
- *
- * Caso a rota tenha caronas, esta função pode retornar true, mas a rota de fato não ser válida depois de fazer o push_forward
- *
- * Usado para determinar os caronas que podem fazer match com um motorista. e Na inserção
- * propriamente dita do primeiro carona.
- * */
-bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result){
-
-	double A = serviceAnterior->r->pickup_earliest_time;
-	double B = serviceAnterior->r->pickup_latest_time;
-	double C = serviceProximo->r->delivery_earliest_time;
-	double D = serviceProximo->r->delivery_latest_time;
-
-	double distanceVehicleSourceRiderSource = haversine_helper(serviceAnterior->r->pickup_location_latitude, serviceAnterior->r->pickup_location_longitude, carona->pickup_location_latitude, carona->pickup_location_longitude);
-	double distanceRiderDestinyVehicleDestiny = haversine_helper(carona->delivery_location_latitude, carona->delivery_location_longitude, serviceProximo->r->delivery_location_latitude, serviceProximo->r->delivery_location_longitude);
-	double distanceRiderSourceRiderDestiny = haversine_helper(carona->pickup_location_latitude, carona->pickup_location_longitude, carona->delivery_location_latitude, carona->delivery_location_longitude);
-
-	double E = A + distanceVehicleSourceRiderSource;
-	double F = B + distanceVehicleSourceRiderSource;
-	double G = C - distanceRiderDestinyVehicleDestiny;
-	double H = D - distanceRiderDestinyVehicleDestiny;
-
-	double I = carona->pickup_earliest_time;
-	double J = carona->pickup_latest_time;
-	double K = carona->delivery_earliest_time;
-	double L = carona->delivery_latest_time;
-
-	if (J < E || K  >  H)
-		return false;
-
-	double M = fmax(I, E);
-	double N = fmin(J, F);
-	double O = fmax(G, K);
-	double P = fmin(H, L);
-
-	if (N < M || P < O)
-		return false;
-
-	double pickup = M;
-	double delivery = M + distanceRiderSourceRiderDestiny;
-
-	if (delivery > P)
-		return false;
-
-	if (delivery < O){
-		double MAXeXTRAtIME = (BD_FRAC) * distanceRiderSourceRiderDestiny;
-		if (delivery + MAXeXTRAtIME >= O){
-			return false;
-		}
-		else{
-			delivery = O;
-			pickup = delivery + MAXeXTRAtIME - distanceRiderSourceRiderDestiny;
-			if (pickup > N)
-				return false;
-		}
-	}
-
-	*pickup_result = pickup;
-	*delivery_result = delivery;
-	return true;
-}
 
 /*
  * A0101B = tamanho 6
@@ -654,54 +415,6 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 	}
 }
 
-/*Gera um indivíduo preenchido com os motoristas e
- * caronas aleatórias, caso insereCaronasAleatorias seja true
- *
- * index_array[]: Aleatoriza a ORDEM em que as rotas serão preenchidas
- */
-Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias){
-	Individuo *idv = new_individuo(g->drivers, g->riders);
-
-	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
-		int j = index_array[x];
-		Rota * rota = &idv->cromossomo[j];
-		Request * driver = &g->request_list[j];
-
-		//Insere o motorista na rota
-		rota->list[0].r = driver;
-		rota->list[0].is_source = true;
-		rota->list[0].service_time = rota->list[0].r->pickup_earliest_time;//Sai na hora mais cedo
-		rota->list[0].offset = 1;//Informa que o destino está logo à frente
-		rota->list[1].r = driver;
-		rota->list[1].is_source = false;
-		rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
-		rota->length = 2;
-
-		if (insereCaronasAleatorias)
-			insere_carona_aleatoria_rota(g, rota);
-	}
-	//Depois de inserir todas as rotas, limpa a lista de matches
-	//Para que o próximo indivíduo possa usa-las
-	if (insereCaronasAleatorias)
-		clean_riders_matches(g);
-
-	return idv;
-}
-
-/*Inicia a população na memória e então:
- * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
- * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
-Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias){
-	Population *p = (Population*) new_empty_population(size);
-
-	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
-		Individuo *idv = generate_random_individuo(g, index_array, insereCaronasAleatorias);
-		p->list[p->size++] = idv;
-	}
-	return p;
-}
-
-
 
 /*Pega os melhores N indivíduos do frontList e joga na população pai.
  * Os restantes vão pra população filho.
@@ -784,20 +497,6 @@ Individuo * tournamentSelection(Population * parents){
 			best = outro;
 	}
 	return best;
-}
-
-/** Copia as rotas do indivíduo origem pro indivíduo destino */
-void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
-	for (int i = start; i < end; i++){
-		Rota rota = origin->cromossomo[i];
-		for (int j = 0; j < rota.length; j++){
-			destiny->cromossomo[i].list[j].r = rota.list[j].r;
-			destiny->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-			destiny->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-			destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
-		}
-	}
-
 }
 
 void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, float crossoverProbability){

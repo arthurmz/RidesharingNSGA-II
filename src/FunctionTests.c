@@ -7,6 +7,7 @@
 
 #include "NSGAII.h"
 #include "Helper.h"
+#include "Calculations.h"
 #include <stdio.h>
 #include <stdlib.h>
 

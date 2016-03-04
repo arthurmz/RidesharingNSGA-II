@@ -9,15 +9,7 @@
 #define NSGAII_H_
 
 #include <stdbool.h>
-
-/**Struct destinada a facilitar os cálculos de
- * sobreposição das janelas de tempo*/
-typedef struct JanelaTempo{
-	double pickup_earliest_time;
-	double pickup_latest_time;
-	double delivery_earliest_time;
-	double delivery_latest_time;
-}JanelaTempo;
+#include "StaticVariables.h"
 
 /*Driver or Rider*/
 typedef struct Request{
@@ -116,11 +108,9 @@ void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
-bool is_rota_valida(Rota *rota);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
-double distancia_percorrida(Rota * rota);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);
@@ -134,7 +124,6 @@ void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int index_array[], int position);
 void mutation(Individuo *ind, Graph *g);
 
-bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result);
 
 
 #endif /* NSGAII_H_ */
