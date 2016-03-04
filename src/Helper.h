@@ -31,6 +31,7 @@ void free_population_fronts(Fronts * f);
 void print(Population *p);
 Graph *new_graph(int drivers, int riders, int total_requests);
 
+JanelaTempo generate_janela_insercao(JanelaTempo janela, double distanceVehicleSourceRiderSource,  double distanceRiderDestinyVehicleDestiny);
 
 
 #endif /* HELPER_H_ */

@@ -64,17 +64,17 @@ int mainbak(){
 }
 
 //TEste harversine
-int main_harversine(){
+int main_haversine(){
 
-	float longitude_a = -87.6916;
-	float latitude_a = 41.89188;
+	float longitude_a = -88.233519999999999;
+	float latitude_a = 41.79233;
 
-	float longitude_b = -88.01062;
-	float latitude_b = 41.97552;
+	float longitude_b = -87.98536;
+	float latitude_b = 41.708320000000001;
 
 	float result = haversine_helper(latitude_a, longitude_a, latitude_b, longitude_b);
 
-	printf("%f\n", result);
+	printf("%f\n", result * 1.3);
 
 }
 

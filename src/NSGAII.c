@@ -385,6 +385,121 @@ void update_times(Rota *rota){
 	}
 }
 
+
+
+
+/** Um novo método de verificação da inserção de uma carona
+ * imaginado para ser executado ANTES da inserção de fato.
+ * O retorno deste método são os momentos de pickup e delivery
+ * que o carona terá.
+ * Implementação disto:
+ *
+		Veículo 					A|--------|B             C|-----------|D
+									 \         \              /           /
+		Janela de inserção   	      E|--------|F          G|-----------|H
+		Janela do carona          I|---------|J                    K|-----------|L
+		Janela real                   M|-----|N                    O|----|P
+
+
+							 Verificando se dá pra fazer a inserção;
+
+	if (J < E || K  >  H)
+		CARONA INVÁLIDA!, nem calcula a janela real;
+
+	calcula_janela_real;
+	if (N < M || P < O)
+		CARONA INVÁLIDA!
+
+	pickup = M
+	delivery = M + D3;
+	if (delivery > P)
+		CARONA INVÁLIDA!
+	if (delivery < O){
+		MAXeXTRAtIME = 0.3 * D3;
+
+		if (delivery + MAXeXTRAtIME >= O){
+			CARONA VÁLIDA!
+		}
+		else{
+			delivery = O;
+			pickup = delivery + MAXeXTRAtIME - D3;
+			if (pickup > N)
+				CARONA INVÁLIDA!
+		}
+	}
+
+	Se chegou a qui, a carona é válida e seus valores de pickup e delivery são
+	pickup e delivery;
+ *
+ *
+ */
+
+/**
+ * Verifica se o carona CARONA pode ser inserido sozinho na rota de VEHICLE.
+ * Caso seja possível a função armazena a hora de pickup e delivery mais cedo possível
+ * em pickup_result e delivery_result.
+ *
+ * Caso a rota tenha caronas, esta função pode retornar true, mas a rota de fato não ser válida depois de fazer o push_forward
+ *
+ * Usado para determinar os caronas que podem fazer match com um motorista. e Na inserção
+ * propriamente dita do primeiro carona.
+ * */
+bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result){
+
+	double A = serviceAnterior->r->pickup_earliest_time;
+	double B = serviceAnterior->r->pickup_latest_time;
+	double C = serviceProximo->r->delivery_earliest_time;
+	double D = serviceProximo->r->delivery_latest_time;
+
+	double distanceVehicleSourceRiderSource = haversine_helper(serviceAnterior->r->pickup_location_latitude, serviceAnterior->r->pickup_location_longitude, carona->pickup_location_latitude, carona->pickup_location_longitude);
+	double distanceRiderDestinyVehicleDestiny = haversine_helper(carona->delivery_location_latitude, carona->delivery_location_longitude, serviceProximo->r->delivery_location_latitude, serviceProximo->r->delivery_location_longitude);
+	double distanceRiderSourceRiderDestiny = haversine_helper(carona->pickup_location_latitude, carona->pickup_location_longitude, carona->delivery_location_latitude, carona->delivery_location_longitude);
+
+	double E = A + distanceVehicleSourceRiderSource;
+	double F = B + distanceVehicleSourceRiderSource;
+	double G = C - distanceRiderDestinyVehicleDestiny;
+	double H = D - distanceRiderDestinyVehicleDestiny;
+
+	double I = carona->pickup_earliest_time;
+	double J = carona->pickup_latest_time;
+	double K = carona->delivery_earliest_time;
+	double L = carona->delivery_latest_time;
+
+	if (J < E || K  >  H)
+		return false;
+
+	double M = fmax(I, E);
+	double N = fmin(J, F);
+	double O = fmax(G, K);
+	double P = fmin(H, L);
+
+	if (N < M || P < O)
+		return false;
+
+	double pickup = M;
+	double delivery = M + distanceRiderSourceRiderDestiny;
+
+	if (delivery > P)
+		return false;
+
+	if (delivery < O){
+		double MAXeXTRAtIME = (BD_FRAC) * distanceRiderSourceRiderDestiny;
+		if (delivery + MAXeXTRAtIME >= O){
+			return false;
+		}
+		else{
+			delivery = O;
+			pickup = delivery + MAXeXTRAtIME - distanceRiderSourceRiderDestiny;
+			if (pickup > N)
+				return false;
+		}
+	}
+
+	*pickup_result = pickup;
+	*delivery_result = delivery;
+	return true;
+}
+
 /*
  * A0101B = tamanho 6
  * 			de 0 a 5
@@ -395,7 +510,15 @@ void update_times(Rota *rota){
  * 	2 é o que pula um e insere.
  * */
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset){
-	if (posicao_insercao <= 0 || offset <= 0 || carona == NULL) return false;
+	if (posicao_insercao <= 0 || offset <= 0) return false;
+
+	Service * anterior = &rota->list[posicao_insercao-1];
+	Service * proximo = &rota->list[posicao_insercao];
+	double pickup_result;
+	double delivery_result;
+
+	if (!is_insercao_rota_valida_jt(anterior, proximo, carona, &pickup_result, &delivery_result))
+		return false;
 
 	int ultimaPos = rota->length-1;
 	//Empurra todo mundo depois da posição de inserção
@@ -427,7 +550,9 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 
 	update_times(rota);
 
-	if (!is_rota_valida(rota)){
+	bool rotaValida = is_rota_valida(rota);
+
+	if (!rotaValida){
 		desfaz_insercao_carona_rota(rota, posicao_insercao, offset);
 		carona->matched = false;
 		update_times(rota);
@@ -463,6 +588,7 @@ void evaluate_objective_functions_pop(Population* p, Graph *g){
 		//clean_riders_matches(g);
 	}
 }
+
 
 void evaluate_objective_functions(Individuo *idv, Graph *g){
 	double distance = 0;

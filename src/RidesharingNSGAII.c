@@ -57,19 +57,20 @@ int main(int argc,  char** argv){
 	shuffle(index_array, g->drivers);
 
 	/*Calculando os caronas que são combináveis para cada motorista*/
-	Individuo * individuo_teste = generate_random_individuo(g, index_array, false);
+	Service pickupMotorista, deliveryMotorista;
+
 	for (int i = 0; i < g->drivers; i++){
 		Request * motoristaGrafo = &g->request_list[i];
+		pickupMotorista.r = motoristaGrafo;
+		deliveryMotorista.r = motoristaGrafo;
 		for (int j = g->drivers; j < g->total_requests; j++){
 			Request * carona = &g->request_list[j];
-			Rota * rotaIndividuoTeste = &individuo_teste->cromossomo[i];
-			if ( insere_carona_rota(rotaIndividuoTeste, carona, 1, 1) ){
+			double pickup, delivery;
+			if ( is_insercao_rota_valida_jt(&pickupMotorista, &deliveryMotorista, carona, &pickup, &delivery)) {
 				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
-				desfaz_insercao_carona_rota(rotaIndividuoTeste, 1, 1);
 			}
 		}
 	}
-
 
 
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/

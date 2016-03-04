@@ -10,6 +10,15 @@
 
 #include <stdbool.h>
 
+/**Struct destinada a facilitar os cálculos de
+ * sobreposição das janelas de tempo*/
+typedef struct JanelaTempo{
+	double pickup_earliest_time;
+	double pickup_latest_time;
+	double delivery_earliest_time;
+	double delivery_latest_time;
+}JanelaTempo;
+
 /*Driver or Rider*/
 typedef struct Request{
 	bool driver;//true -driver, false -rider
@@ -20,7 +29,7 @@ typedef struct Request{
 	double service_time_at_delivery;//Tempo gasto para atender o destino (Diferente da HORA em que chega no destino)
 	double pickup_location_longitude;
 	double pickup_location_latitude;
-	double delivery_location_long;
+	double delivery_location_longitude;
 	double delivery_location_latitude;
 	double pickup_earliest_time;
 	double pickup_latest_time;
@@ -124,5 +133,8 @@ void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int index_array[], int position);
 void mutation(Individuo *ind, Graph *g);
+
+bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result);
+
 
 #endif /* NSGAII_H_ */

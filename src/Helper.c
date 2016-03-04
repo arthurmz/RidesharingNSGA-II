@@ -7,6 +7,7 @@
 
 #include "Helper.h"
 #include "StaticVariables.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -86,7 +87,7 @@ double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 
 double haversine(Request *a, Request *b){
 	return haversine_helper(a->pickup_location_latitude, a->pickup_location_longitude,
-			b->delivery_location_latitude, b->delivery_location_long);
+			b->delivery_location_latitude, b->delivery_location_longitude);
 }
 
 /*Tempo em minutos*/
@@ -152,7 +153,7 @@ Graph * parse_file(char *filename){
 				&rq->pickup_earliest_time,
 				&rq->pickup_latest_time,
 				&rq->service_time_at_delivery,
-				&rq->delivery_location_long,
+				&rq->delivery_location_longitude,
 				&rq->delivery_location_latitude,
 				&rq->delivery_earliest_time,
 				&rq->delivery_latest_time);
@@ -233,5 +234,43 @@ void print(Population *p){
 		Individuo *id = p->list[i];
 		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
 	}
+}
+
+
+/**
+ * Gera A janela de inserção
+ *	Veículo 					A|--------|B             C|-----------|D
+ *								 \         \              /           /
+ *	Janela de inserção   	      E|--------|F          G|-----------|H
+ *	Janela do carona          I|---------|J                    K|-----------|L
+ *	Janela real                   M|-----|N                    O|----|P
+ *
+ *
+ * */
+JanelaTempo generate_janela_insercao(JanelaTempo janela, double distanceVehicleSourceRiderSource,  double distanceRiderDestinyVehicleDestiny){
+	JanelaTempo result;
+	result.pickup_earliest_time = janela.pickup_earliest_time + distanceVehicleSourceRiderSource;
+	result.pickup_latest_time = janela.pickup_latest_time + distanceVehicleSourceRiderSource;
+	result.delivery_earliest_time = janela.delivery_earliest_time - distanceRiderDestinyVehicleDestiny;
+	result.delivery_latest_time = janela.delivery_latest_time - distanceRiderDestinyVehicleDestiny;
+	return result;
+}
+
+/**
+ * Gera A janela de inserção
+ *	Veículo 					A|--------|B             C|-----------|D
+ *								 \         \              /           /
+ *	Janela de inserção   	      E|--------|F          G|-----------|H
+ *	Janela do carona          I|---------|J                    K|-----------|L
+ *	Janela real                   M|-----|N                    O|----|P
+ *
+ * */
+JanelaTempo generate_janela_real(JanelaTempo janelaInsercao, JanelaTempo janelaCarona){
+	JanelaTempo result;
+	result.pickup_earliest_time = fmax(janelaInsercao.pickup_earliest_time, janelaCarona.pickup_earliest_time);
+	result.pickup_latest_time = fmin(janelaInsercao.pickup_latest_time, janelaCarona.pickup_latest_time);
+	result.delivery_earliest_time = fmax(janelaInsercao.delivery_earliest_time, janelaCarona.delivery_earliest_time);
+	result.delivery_latest_time = fmin(janelaInsercao.delivery_latest_time, janelaCarona.delivery_latest_time);
+	return result;
 }
 
