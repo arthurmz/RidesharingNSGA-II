@@ -85,10 +85,17 @@ Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCa
 /*Inicia a população na memória e então:
  * Pra cada um dos drivers, aleatoriza a lista de Riders, e lê sequencialmente
  * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
-Population *generate_random_population(int size, Graph *g, int index_array[], bool insereCaronasAleatorias){
+Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias){
 	Population *p = (Population*) new_empty_population(size);
 
+	/*Configurando o index_array usado na aleatorização da ordem de leitura DAS ROTAS*/
+	int index_array[g->drivers];
+	for (int l = 0; l < g->drivers; l++){
+		index_array[l] = l;
+	}
+
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
+		shuffle(index_array,g->drivers);
 		Individuo *idv = generate_random_individuo(g, index_array, insereCaronasAleatorias);
 		p->list[p->size++] = idv;
 	}

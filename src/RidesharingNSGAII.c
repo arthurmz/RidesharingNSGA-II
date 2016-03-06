@@ -49,13 +49,6 @@ int main(int argc,  char** argv){
 	if (g == NULL) return 0;
 
 	/*============================================*/
-	/*Configurando o index_array usado na aleatorização
-	 * da ordem de leitura DAS ROTAS*/
-	int index_array[g->drivers];
-	for (int l = 0; l < g->drivers; l++){
-		index_array[l] = l;
-	}
-	shuffle(index_array, g->drivers);
 
 	/*Calculando os caronas que são combináveis para cada motorista*/
 	Service pickupMotorista, deliveryMotorista;
@@ -89,14 +82,14 @@ int main(int argc,  char** argv){
 
 	printf("qtd mínima que deveria conseguir: %d\n", qtd);
 
-	/*============================================*/
+	/*=====================Início do NSGA-II============================================*/
 
 	
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 	
-	Population * parents = generate_random_population(POPULATION_SIZE, g, index_array, true);
-	Population * children = generate_random_population(POPULATION_SIZE, g, index_array, false);
+	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
+	Population * children = generate_random_population(POPULATION_SIZE, g, false);
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;
@@ -116,7 +109,6 @@ int main(int argc,  char** argv){
 	}
 	
 	//Ao sair do loop, verificamos uma ultima vez o melhor gerado entre os pais e filhos
-
 	evaluate_objective_functions_pop(parents, g);
 	evaluate_objective_functions_pop(children, g);
 	merge(parents, children, big_population);

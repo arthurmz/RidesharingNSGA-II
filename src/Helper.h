@@ -14,6 +14,9 @@
 Individuo * new_individuo(int drivers_qtd, int riders_qtd);
 Population* new_empty_population(int max_capacity);
 
+Individuo *generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias);
+Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias);
+
 Fronts* new_front_list(int max_capacity);
 //void clean_front_list(Fronts * f);
 Graph * parse_file(char *filename);
