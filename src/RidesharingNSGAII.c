@@ -48,6 +48,8 @@ int main(int argc,  char** argv){
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
+	malloc_rota_clone();
+
 	/*============================================*/
 
 	/*Calculando os caronas que são combináveis para cada motorista*/
@@ -69,12 +71,17 @@ int main(int argc,  char** argv){
 
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
 	int qtd = 0;
+	int qtd_array[g->total_requests];
 	printf("quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
-		if (g->request_list[i].matchable_riders > 0)
-			qtd++;
+		//if (g->request_list[i].matchable_riders > 0)
+			//qtd++;
 		printf("%d: ",g->request_list[i].matchable_riders);
 		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
+			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->req_no]){
+				qtd_array[g->request_list[i].matchable_riders_list[j]->req_no] = 1;
+				qtd++;
+			}
 			printf("%d ", g->request_list[i].matchable_riders_list[j]->req_no);
 		}
 		printf("\n");

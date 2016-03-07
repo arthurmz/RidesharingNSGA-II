@@ -101,6 +101,8 @@ typedef struct Graph{
 
 //Graph *new_graph(int drivers, int riders, int total_requests);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
+void malloc_rota_clone();
+void push_forward(Rota *rota, int posicao_insercao);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);
@@ -109,6 +111,7 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
 void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
+void clean_riders_matches(Graph *g);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);

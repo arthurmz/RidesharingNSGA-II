@@ -39,7 +39,7 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 	ind->size = drivers_qtd;
 
 	for (int i = 0; i < drivers_qtd; i++){
-		Service * result = calloc(20, sizeof(Service));//Se quebrar, aumentar esse tamanho aqui
+		Service * result = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));//Se quebrar, aumentar esse tamanho aqui
 		ind->cromossomo[i].list = result;
 		ind->cromossomo[i].length = 0;
 		ind->cromossomo[i].id = i;
@@ -115,6 +115,17 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 		}
 	}
 
+}
+
+/**Clona o conteúdo de uma rota em outra.
+ * Para manter intacta a original, em caso da rota
+ * clonada não servir*/
+void clone_rota(Rota * rota, Rota *cloneRota){
+	cloneRota->id = rota->id;
+	cloneRota->length = rota->length;
+	for (int i = 0; i < cloneRota->length; i++){
+		cloneRota->list[i] = rota->list[i];
+	}
 }
 
 void complete_free_individuo(Individuo * idv){

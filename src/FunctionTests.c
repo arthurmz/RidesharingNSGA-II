@@ -76,6 +76,6 @@ int main_haversine(){
 	float result = haversine_helper(latitude_a, longitude_a, latitude_b, longitude_b);
 
 	printf("%f\n", result * 1.3);
-
+	return 0;
 }
 

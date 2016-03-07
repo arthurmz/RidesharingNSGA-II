@@ -8,10 +8,19 @@
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include "Helper.h"
 #include "NSGAII.h"
 #include "Calculations.h"
 
+
+Rota *ROTA_CLONE;
+
+void malloc_rota_clone(){
+	/*Criando uma rota para cópia e validação das rotas*/
+	ROTA_CLONE = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+}
 
 /*Adiciona o indivíduo de rank k no front k de FRONTS
  * Atualiza o size de FRONTS caso o rank seja maior*/
@@ -242,13 +251,12 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 /*Atualiza as Horas de chegada e o tempo de espera em cada ponto
  * O waiting_time da partida do motorista é zero;
  *
- *Essa forma de atualizar o tempo é ruim porque destroi as mudanças feitas
- *pelo operador de mutação
+ *Realiza a operação de push forward. Corrigindo os tempos de serviços dos pontos
  * */
-void update_times(Rota *rota){
+void push_forward(Rota *rota, int posicao_insercao){
 	rota->list[0].waiting_time = 0;
 	//rota->list[0].service_time = O servicetime é mantido
-	for (int i = 0; i < rota->length-1; i++){
+	for (int i = posicao_insercao; i < rota->length-1; i++){
 		Service *ant = &rota->list[i];
 		Service *actual = &rota->list[i+1];
 
@@ -273,53 +281,67 @@ void update_times(Rota *rota){
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset){
 	if (posicao_insercao <= 0 || offset <= 0) return false;
 
-	Service * anterior = &rota->list[posicao_insercao-1];
-	Service * proximo = &rota->list[posicao_insercao];
+	clone_rota(rota, ROTA_CLONE);
+
+	Service * anterior = &ROTA_CLONE->list[posicao_insercao-1];
+	Service * proximo = &ROTA_CLONE->list[posicao_insercao];
 	double pickup_result;
 	double delivery_result;
 
 	if (!is_insercao_rota_valida_jt(anterior, proximo, carona, &pickup_result, &delivery_result))
 		return false;
 
-	int ultimaPos = rota->length-1;
+	int ultimaPos = ROTA_CLONE->length-1;
 	//Empurra todo mundo depois da posição de inserção
 	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		rota->list[i+1].is_source = rota->list[i].is_source;
-		rota->list[i+1].offset = rota->list[i].offset;
-		rota->list[i+1].r = rota->list[i].r;
-		rota->list[i+1].service_time = rota->list[i].service_time;
-		rota->list[i+1].waiting_time = rota->list[i].waiting_time;
+		ROTA_CLONE->list[i+1].is_source = ROTA_CLONE->list[i].is_source;
+		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
+		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
+		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
+		ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
-		rota->list[i+1].is_source = rota->list[i].is_source;
-		rota->list[i+1].offset = rota->list[i].offset;
-		rota->list[i+1].r = rota->list[i].r;
-		rota->list[i+1].service_time = rota->list[i].service_time;
-		rota->list[i+1].waiting_time = rota->list[i].waiting_time;
+		ROTA_CLONE->list[i+1].is_source = ROTA_CLONE->list[i].is_source;
+		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
+		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
+		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
+		ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 
 	//Insere o conteúdo do novo carona
-	rota->list[posicao_insercao].r = carona;
-	rota->list[posicao_insercao].is_source = true;
+	ROTA_CLONE->list[posicao_insercao].r = carona;
+	ROTA_CLONE->list[posicao_insercao].is_source = true;
+	ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
 	//Insere o conteúdo do destino do carona
-	rota->list[posicao_insercao+offset].r = carona;
-	rota->list[posicao_insercao+offset].is_source = false;
+	ROTA_CLONE->list[posicao_insercao+offset].r = carona;
+	ROTA_CLONE->list[posicao_insercao+offset].is_source = false;
+	ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
 
-	rota->length += 2;
+	ROTA_CLONE->length += 2;
 	carona->matched = true;
 
-	update_times(rota);
+	push_forward(ROTA_CLONE, posicao_insercao+offset);
 
-	bool rotaValida = is_rota_valida(rota);
+	bool rotaValida = is_rota_valida(ROTA_CLONE);
 
-	if (!rotaValida){
-		desfaz_insercao_carona_rota(rota, posicao_insercao, offset);
+	if (rotaValida){
+		clone_rota(ROTA_CLONE, rota);
+		return true;
+	}
+	else{
 		carona->matched = false;
-		update_times(rota);
 		return false;
 	}
-	return true;
+
+//	if (!rotaValida){
+//		desfaz_insercao_carona_rota(ROTA_CLONE, posicao_insercao, offset);
+//		carona->matched = false;
+//		update_times(ROTA_CLONE);
+//		return false;
+//	}
+//	clone_rota(ROTA_CLONE, rota);
+//	return true;
 }
 
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
