@@ -248,23 +248,26 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
 }
 
-/*Atualiza as Horas de chegada e o tempo de espera em cada ponto
- * O waiting_time da partida do motorista é zero;
- *
+/*
  *Realiza a operação de push forward. Corrigindo os tempos de serviços dos pontos
+ *O primeiro service time tem que estar calculado
  * */
 void push_forward(Rota *rota, int posicao_insercao){
-	rota->list[0].waiting_time = 0;
-	//rota->list[0].service_time = O servicetime é mantido
 	for (int i = posicao_insercao; i < rota->length-1; i++){
 		Service *ant = &rota->list[i];
 		Service *actual = &rota->list[i+1];
+		Service *prox = NULL;
+		if (i+2 < rota->length)
+			prox = &rota->list[i+2];
 
-		actual->service_time = calculate_time_at(actual, ant);
+		actual->service_time = calculate_time_at(actual, ant, prox);
+
+		/*
 		if (actual->is_source)
 			actual->waiting_time = fmax(0, actual->r->pickup_earliest_time - actual->service_time);
 		else
 			actual->waiting_time = 0;
+		*/
 	}
 }
 

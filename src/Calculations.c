@@ -11,8 +11,8 @@
 double distancia_percorrida(Rota * rota){
 	double accDistance =0;
 	for (int i = 0; i < rota->length -1; i++){
-		Request *a = rota->list[i].r;
-		Request *b = rota->list[i+1].r;
+		Service *a = &rota->list[i];
+		Service *b = &rota->list[i+1];
 		accDistance += haversine(a,b);
 	}
 
@@ -34,13 +34,30 @@ double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 	return R * c;
 }
 
-double haversine(Request *a, Request *b){
-	return haversine_helper(a->pickup_location_latitude, a->pickup_location_longitude,
-			b->delivery_location_latitude, b->delivery_location_longitude);
+double haversine(Service *a, Service *b){
+	double lat1, long1, lat2, long2;
+	if (a->is_source){
+		lat1 = a->r->pickup_location_latitude;
+		long1 = a->r->pickup_location_longitude;
+	}
+	else{
+		lat1 = a->r->delivery_location_latitude;
+		long1 = a->r->delivery_location_longitude;
+	}
+
+	if (b->is_source){
+		lat2 = b->r->pickup_location_latitude;
+		long2 = b->r->pickup_location_longitude;
+	}
+	else {
+		lat2 = b->r->delivery_location_latitude;
+		long2 = b->r->delivery_location_longitude;
+	}
+	return haversine_helper(lat1, long1, lat2, long2);
 }
 
 /*Tempo em minutos*/
-double time_between_requests(Request *a, Request *b){
+double time_between_requests(Service *a, Service *b){
 	double distance = haversine(a, b);
 	return distance / VEHICLE_SPEED * 60;
 }
@@ -50,23 +67,26 @@ double time_between_requests(Request *a, Request *b){
 double tempo_gasto_rota(Rota *rota, int i, int j){
 	double accTime =0;
 	for (int k = i; k < j; k++){
-		Request *a = rota->list[k].r;
-		Request *b = rota->list[k+1].r;
+		Service *a = &rota->list[k];
+		Service *b = &rota->list[k+1];
 		accTime += time_between_requests(a,b);
 	}
 	return accTime;
 }
 
 /*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
- * Considera que o tempo de espera do anterior já está calculado*/
-double calculate_time_at(Service * actual, Service *ant){
+ * Calcula o horário de pickup o mais proximo possível do que ele poderia ser
+ * se as janelas de tempo fossem respeitadas.
+ * Note que mesmo assim a rota pode ser inválida.
+ * Service prox pode ser NULL se o actual for o destino do motorista*/
+double calculate_time_at(Service * actual, Service *ant, Service *prox){
 	double next_time = 0;
 	if (ant->is_source){
-		next_time = ant->service_time + ant->r->service_time_at_source + time_between_requests(ant->r, actual->r) + actual->waiting_time;
+		next_time = ant->service_time + ant->r->service_time_at_source + time_between_requests(ant, actual);
 		next_time = fmax(next_time, actual->r->pickup_earliest_time);
 	}
 	else{
-		next_time = ant->service_time + ant->r->service_time_at_delivery + time_between_requests(ant->r, actual->r);
+		next_time = ant->service_time + ant->r->service_time_at_delivery + time_between_requests(ant, actual);
 	}
 	return next_time;
 }
@@ -113,7 +133,7 @@ bool is_carga_dentro_limite(Rota *rota){
 bool is_distancia_motorista_respeitada(Rota * rota){
 	Service * source = &rota->list[0];
 	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source->r, destiny->r);//Maximum Travel Distance
+	double MTD = AD + BD * haversine(source, destiny);//Maximum Travel Distance
 	double accDistance = distancia_percorrida(rota);
 	return accDistance <= MTD;
 }
@@ -122,7 +142,7 @@ bool is_distancia_motorista_respeitada(Rota * rota){
 bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
-	double MTT = AT + BT * time_between_requests(source->r, destiny->r);
+	double MTT = AT + BT * time_between_requests(source, destiny);
 	double accTime = tempo_gasto_rota(rota, i, j);
 	return accTime <= MTT;
 }
