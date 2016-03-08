@@ -301,7 +301,7 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
 		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
 		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
-		ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
+		//ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
@@ -309,7 +309,7 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
 		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
 		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
-		ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
+		//ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 
 	//Insere o conteúdo do novo carona
@@ -323,6 +323,10 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 
 	ROTA_CLONE->length += 2;
 	carona->matched = true;
+
+	//Depois de inserir, deve verificar se o ponto anterior precisa ser atualizado
+	//Se for, o push_forward faz o resto do trabalho de corrigir os tempos de pickup e delivery
+	//ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
 
 	push_forward(ROTA_CLONE, posicao_insercao+offset);
 
@@ -573,14 +577,22 @@ void repair(Individuo *offspring, Graph *g, int index_array[], int position){
 	}
 }
 
-void mutation(Individuo *ind, Graph *g){
+/** 1a mutação: remover o carona de uma rota e inserir em um motorista onde só cabe um carona*/
+void mutation(Individuo *ind, Graph *g, float mutationProbability){
+	float accept = (float)rand() / RAND_MAX;
+
+	if (accept < mutationProbability){
+
+
+	}
+
 
 }
 
 
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
-void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability ){
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability, float mutationProbability){
 	int index_array[g->riders];
 	for (int l = 0; l < g->riders; l++){
 		index_array[l] = l;
@@ -606,8 +618,8 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 		shuffle(index_array, g->riders);
 		repair(offspring2, g, index_array, 2);
 
-		mutation(offspring1, g);
-		mutation(offspring2, g);
+		mutation(offspring1, g, mutationProbability);
+		mutation(offspring2, g, mutationProbability);
 		offspring->size += 2;
 	}
 }

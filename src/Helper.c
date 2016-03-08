@@ -111,7 +111,7 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 			destiny->cromossomo[i].list[j].r = rota.list[j].r;
 			destiny->cromossomo[i].list[j].is_source = rota.list[j].is_source;
 			destiny->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-			destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
+			//destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
 		}
 	}
 
@@ -123,7 +123,7 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 void clone_rota(Rota * rota, Rota *cloneRota){
 	cloneRota->id = rota->id;
 	cloneRota->length = rota->length;
-	for (int i = 0; i < cloneRota->length; i++){
+	for (int i = 0; i < rota->length; i++){
 		cloneRota->list[i] = rota->list[i];
 	}
 }
@@ -283,6 +283,35 @@ void print(Population *p){
 		Individuo *id = p->list[i];
 		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
 	}
+}
+
+
+/** Imprime para um arquivo o conteúdo do espaço de decisão dos indivíduos da população*/
+void print_to_file_decision_space(Population * p, Graph * g){
+	FILE *fp=fopen("espaco_decisao.txt", "w");
+
+	for (int i = 0; i < p->size; i++){
+		Individuo * individuo = p->list[i];
+		fprintf(fp, "Indivíduo %d\n", i);
+
+		for (int j = 0; j < g->drivers; j++){
+			for (int k = 0; k < individuo->cromossomo[j].length; k++){
+				fprintf(fp, "%d:%c ", individuo->cromossomo[j].list[k].r->req_no, individuo->cromossomo[j].list[k].is_source ? '+' : '-');
+			}
+			fprintf(fp, " | ");
+			for (int k = 0; k < individuo->cromossomo[j].length; k++){
+				fprintf(fp, "%.2f: ", individuo->cromossomo[j].list[k].service_time);
+			}
+			fprintf(fp, " | ");
+			for (int k = 0; k < individuo->cromossomo[j].length; k++){
+				fprintf(fp, "[[%.2f;%.2f][%.2f;%.2f]]", individuo->cromossomo[j].list[k].r->pickup_earliest_time, individuo->cromossomo[j].list[k].r->pickup_latest_time, individuo->cromossomo[j].list[k].r->delivery_earliest_time, individuo->cromossomo[j].list[k].r->delivery_latest_time);
+			}
+
+			fprintf(fp, "\n");
+		}
+	}
+
+	fclose(fp);
 }
 
 
