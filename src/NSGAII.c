@@ -350,6 +350,9 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
 	if (posicao_insercao <= 0 || offset <= 0) return;
 
+	if (rota->length == 2)
+		printf("rota vai ficar vazia");
+
 	for (int i = posicao_insercao; i < rota->length-1; i++){
 		rota->list[i] = rota->list[i+1];
 	}

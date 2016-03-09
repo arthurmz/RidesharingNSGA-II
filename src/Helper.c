@@ -106,12 +106,14 @@ Population *generate_random_population(int size, Graph *g, bool insereCaronasAle
 /** Copia as rotas do indivíduo origem pro indivíduo destino */
 void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 	for (int i = start; i < end; i++){
-		Rota rota = origin->cromossomo[i];
-		for (int j = 0; j < rota.length; j++){
-			destiny->cromossomo[i].list[j].r = rota.list[j].r;
-			destiny->cromossomo[i].list[j].is_source = rota.list[j].is_source;
-			destiny->cromossomo[i].list[j].service_time = rota.list[j].service_time;
-			//destiny->cromossomo[i].list[j].waiting_time = rota.list[j].waiting_time;
+		Rota * rotaOrigem = &origin->cromossomo[i];
+		Rota * rotaDestino = &destiny->cromossomo[i];
+		rotaDestino->length = rotaOrigem->length;
+		for (int j = 0; j < rotaOrigem->length; j++){
+			rotaDestino->list[j].r = rotaOrigem->list[j].r;
+			rotaDestino->list[j].is_source = rotaOrigem->list[j].is_source;
+			rotaDestino->list[j].service_time = rotaOrigem->list[j].service_time;
+			//destiny->cromossomo[i].list[j].waiting_time = rota->list[j].waiting_time;
 		}
 	}
 
