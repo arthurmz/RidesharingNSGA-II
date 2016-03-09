@@ -304,7 +304,16 @@ void print_to_file_decision_space(Population * p, Graph * g){
 			}
 			fprintf(fp, " | ");
 			for (int k = 0; k < individuo->cromossomo[j].length; k++){
-				fprintf(fp, "[[%.2f;%.2f][%.2f;%.2f]]", individuo->cromossomo[j].list[k].r->pickup_earliest_time, individuo->cromossomo[j].list[k].r->pickup_latest_time, individuo->cromossomo[j].list[k].r->delivery_earliest_time, individuo->cromossomo[j].list[k].r->delivery_latest_time);
+				double a,b;
+				if ( individuo->cromossomo[j].list[k].is_source){
+					a = individuo->cromossomo[j].list[k].r->pickup_earliest_time;
+					b = individuo->cromossomo[j].list[k].r->pickup_latest_time;
+				}
+				else {
+					a = individuo->cromossomo[j].list[k].r->delivery_earliest_time;
+					b = individuo->cromossomo[j].list[k].r->delivery_latest_time;
+				}
+				fprintf(fp, "[%.2f;%.2f] ", a, b);
 			}
 
 			fprintf(fp, "\n");

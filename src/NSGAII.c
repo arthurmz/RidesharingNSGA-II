@@ -249,18 +249,14 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 }
 
 /*
- *Realiza a operação de push forward. Corrigindo os tempos de serviços dos pontos
- *O primeiro service time tem que estar calculado
+ *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
  * */
-void push_forward(Rota *rota, int posicao_insercao){
-	for (int i = posicao_insercao; i < rota->length-1; i++){
+void update_times(Rota *rota, int posicao_insercao){
+	for (int i = posicao_insercao-1; i < rota->length-1; i++){
 		Service *ant = &rota->list[i];
 		Service *actual = &rota->list[i+1];
-		Service *prox = NULL;
-		if (i+2 < rota->length)
-			prox = &rota->list[i+2];
 
-		actual->service_time = calculate_time_at(actual, ant, prox);
+		actual->service_time = calculate_time_at(actual, ant);
 
 		/*
 		if (actual->is_source)
@@ -291,8 +287,8 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	double pickup_result;
 	double delivery_result;
 
-	if (!is_insercao_rota_valida_jt(anterior, proximo, carona, &pickup_result, &delivery_result))
-		return false;
+	//if (!is_insercao_rota_valida_jt(anterior, proximo, carona, &pickup_result, &delivery_result))
+		//return false;
 
 	int ultimaPos = ROTA_CLONE->length-1;
 	//Empurra todo mundo depois da posição de inserção
@@ -315,11 +311,11 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	//Insere o conteúdo do novo carona
 	ROTA_CLONE->list[posicao_insercao].r = carona;
 	ROTA_CLONE->list[posicao_insercao].is_source = true;
-	ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
+	//ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
 	//Insere o conteúdo do destino do carona
 	ROTA_CLONE->list[posicao_insercao+offset].r = carona;
 	ROTA_CLONE->list[posicao_insercao+offset].is_source = false;
-	ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
+	//ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
 
 	ROTA_CLONE->length += 2;
 	carona->matched = true;
@@ -328,7 +324,7 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	//Se for, o push_forward faz o resto do trabalho de corrigir os tempos de pickup e delivery
 	//ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
 
-	push_forward(ROTA_CLONE, posicao_insercao+offset);
+	update_times(ROTA_CLONE, posicao_insercao);
 
 	bool rotaValida = is_rota_valida(ROTA_CLONE);
 

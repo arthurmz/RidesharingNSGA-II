@@ -102,7 +102,7 @@ typedef struct Graph{
 //Graph *new_graph(int drivers, int riders, int total_requests);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 void malloc_rota_clone();
-void push_forward(Rota *rota, int posicao_insercao);
+void update_times(Rota *rota, int posicao_insercao);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);

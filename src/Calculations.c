@@ -74,20 +74,28 @@ double tempo_gasto_rota(Rota *rota, int i, int j){
 	return accTime;
 }
 
-/*Calcula a hora em que chega no próximo ponto, à partir do ponto informado
- * Calcula o horário de pickup o mais proximo possível do que ele poderia ser
- * se as janelas de tempo fossem respeitadas.
- * Note que mesmo assim a rota pode ser inválida.
- * Service prox pode ser NULL se o actual for o destino do motorista*/
-double calculate_time_at(Service * actual, Service *ant, Service *prox){
+/**Calcula o service_time mais cedo possível para actual. Baseado
+ * no service_time de ant */
+double calculate_time_at(Service * actual, Service *ant){
 	double next_time = 0;
-	if (ant->is_source){
-		next_time = ant->service_time + ant->r->service_time_at_source + time_between_requests(ant, actual);
-		next_time = fmax(next_time, actual->r->pickup_earliest_time);
-	}
-	else{
-		next_time = ant->service_time + ant->r->service_time_at_delivery + time_between_requests(ant, actual);
-	}
+
+	double st;
+	if (ant->is_source)
+		st = ant->r->service_time_at_source;
+	else
+		st = ant->r->service_time_at_delivery;
+
+	double janela_tempo_a;
+	if (actual->is_source)
+		janela_tempo_a = actual->r->pickup_earliest_time;
+	else
+		janela_tempo_a = actual->r->delivery_earliest_time;
+
+
+	next_time = ant->service_time + st + time_between_requests(ant, actual);
+	next_time = fmax(next_time, janela_tempo_a);
+
+
 	return next_time;
 }
 
@@ -243,7 +251,9 @@ bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProxi
 	if (delivery < O){
 		double MAXeXTRAtIME = (BD_FRAC) * distanceRiderSourceRiderDestiny;
 		if (delivery + MAXeXTRAtIME >= O){
-			return false;
+			*pickup_result = pickup;
+			*delivery_result = delivery;
+			return true;
 		}
 		else{
 			delivery = O;
