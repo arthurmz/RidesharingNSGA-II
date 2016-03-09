@@ -49,6 +49,7 @@ typedef struct Service{
  * sem se preocupar com a memória*/
 typedef struct Rota{
 	Service *list;
+	int capacity;
 	int length;
 	int id;//Identifica o motorista da rota na estrutura GRAPH
 }Rota;

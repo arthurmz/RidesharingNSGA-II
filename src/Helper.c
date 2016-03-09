@@ -42,6 +42,7 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
 		Service * result = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));//Se quebrar, aumentar esse tamanho aqui
 		ind->cromossomo[i].list = result;
 		ind->cromossomo[i].length = 0;
+		ind->cromossomo[i].capacity = MAX_SERVICES_MALLOC_ROUTE;
 		ind->cromossomo[i].id = i;
 	}
 	return ind;

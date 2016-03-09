@@ -320,6 +320,11 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	ROTA_CLONE->length += 2;
 	carona->matched = true;
 
+	if (ROTA_CLONE->length == ROTA_CLONE->capacity - 4){
+		ROTA_CLONE->capacity += MAX_SERVICES_MALLOC_ROUTE;
+		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
+	}
+
 	//Depois de inserir, deve verificar se o ponto anterior precisa ser atualizado
 	//Se for, o push_forward faz o resto do trabalho de corrigir os tempos de pickup e delivery
 	//ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
