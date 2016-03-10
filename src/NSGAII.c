@@ -431,16 +431,15 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 	if (qtd_caronas_inserir == 0) return;
 	/*Configurando o index_array usado na aleatorização
 	 * da ordem de leitura dos caronas*/
-	int index_array2[qtd_caronas_inserir];
 	for (int l = 0; l < qtd_caronas_inserir; l++){
-		index_array2[l] = l;
+		index_array_caronas_inserir[l] = l;
 	}
 
 	//int qtd_caronas_inserir = VEHICLE_CAPACITY;
-	shuffle(index_array2, qtd_caronas_inserir);
+	shuffle(index_array_caronas_inserir, qtd_caronas_inserir);
 
 	for (int z = 0; z < qtd_caronas_inserir; z++){
-		Request * carona = request->matchable_riders_list[index_array2[z]];
+		Request * carona = request->matchable_riders_list[index_array_caronas_inserir[z]];
 		int posicao_inicial = 1 + (rand () % (rota->length-1));
 		int offset = 1;//TODO, variar o offset
 		if (!carona->matched)
@@ -556,7 +555,7 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
  * Tenta inserir novas
  * Utiliza graph pra saber quem já fez match.
  * */
-void repair(Individuo *offspring, Graph *g, int index_array[], int position){
+void repair(Individuo *offspring, Graph *g, int position){
 
 	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
 		Rota *rota = &offspring->cromossomo[i];
@@ -616,11 +615,11 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 
 		clean_riders_matches(g);
 		shuffle(index_array, g->riders);
-		repair(offspring1, g, index_array, 1);
+		repair(offspring1, g, 1);
 
 		clean_riders_matches(g);
 		shuffle(index_array, g->riders);
-		repair(offspring2, g, index_array, 2);
+		repair(offspring2, g, 2);
 
 		mutation(offspring1, g, mutationProbability);
 		mutation(offspring2, g, mutationProbability);

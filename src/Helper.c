@@ -53,11 +53,11 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
  *
  * index_array[]: Aleatoriza a ORDEM em que as rotas serão preenchidas
  */
-Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCaronasAleatorias){
+Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
 	Individuo *idv = new_individuo(g->drivers, g->riders);
 
 	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
-		int j = index_array[x];
+		int j = index_array_drivers[x];
 		Rota * rota = &idv->cromossomo[j];
 		Request * driver = &g->request_list[j];
 
@@ -89,15 +89,9 @@ Individuo * generate_random_individuo(Graph *g, int index_array[], bool insereCa
 Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias){
 	Population *p = (Population*) new_empty_population(size);
 
-	/*Configurando o index_array usado na aleatorização da ordem de leitura DAS ROTAS*/
-	int index_array[g->drivers];
-	for (int l = 0; l < g->drivers; l++){
-		index_array[l] = l;
-	}
-
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
-		shuffle(index_array,g->drivers);
-		Individuo *idv = generate_random_individuo(g, index_array, insereCaronasAleatorias);
+		shuffle(index_array_drivers,g->drivers);
+		Individuo *idv = generate_random_individuo(g, insereCaronasAleatorias);
 		p->list[p->size++] = idv;
 	}
 	return p;
@@ -111,9 +105,10 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 		Rota * rotaDestino = &destiny->cromossomo[i];
 		rotaDestino->length = rotaOrigem->length;
 		for (int j = 0; j < rotaOrigem->length; j++){
-			rotaDestino->list[j].r = rotaOrigem->list[j].r;
-			rotaDestino->list[j].is_source = rotaOrigem->list[j].is_source;
-			rotaDestino->list[j].service_time = rotaOrigem->list[j].service_time;
+			rotaDestino->list[j] = rotaOrigem->list[j];
+			//rotaDestino->list[j].r = rotaOrigem->list[j].r;
+			//rotaDestino->list[j].is_source = rotaOrigem->list[j].is_source;
+			//rotaDestino->list[j].service_time = rotaOrigem->list[j].service_time;
 			//destiny->cromossomo[i].list[j].waiting_time = rota->list[j].waiting_time;
 		}
 	}

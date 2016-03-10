@@ -51,6 +51,19 @@ int main(int argc,  char** argv){
 	if (g == NULL) return 0;
 
 	malloc_rota_clone();
+	index_array_riders = malloc(g->riders * sizeof(int));
+	index_array_drivers = malloc(g->drivers * sizeof(int));
+	index_array_caronas_inserir = malloc(MAX_SERVICES_MALLOC_ROUTE * 10 * sizeof(int));
+	for (int i = 0; i < g->riders; i++){
+		index_array_riders[i] = i;
+	}
+	for (int i = 0; i < g->drivers; i++){
+		index_array_drivers[i] = i;
+	}
+	for (int i = 0; i < (MAX_SERVICES_MALLOC_ROUTE * 10); i++){
+		index_array_caronas_inserir[i] = i;
+	}
+
 
 	/*============================================*/
 
@@ -93,7 +106,7 @@ int main(int argc,  char** argv){
 	printf("qtd mínima que deveria conseguir: %d\n", qtd);
 
 	/*=====================Início do NSGA-II============================================*/
-
+	clock_t tic = clock();
 	
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
@@ -125,9 +138,13 @@ int main(int argc,  char** argv){
 	fast_nondominated_sort(big_population, frontsList);
 
 	evaluate_objective_functions_pop(frontsList->list[0], g);
+
+	clock_t toc = clock();
 	printf("Imprimindo o ultimo front obtido:\n");
 	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
+
+    printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
 
 	print_to_file_decision_space(frontsList->list[0],g);
 

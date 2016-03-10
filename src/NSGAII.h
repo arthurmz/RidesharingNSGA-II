@@ -123,7 +123,7 @@ void sort_by_objective(Population *pop, int obj);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
-void repair(Individuo *offspring, Graph *g, int index_array[], int position);
+void repair(Individuo *offspring, Graph *g, int position);
 void mutation(Individuo *ind, Graph *g, float mutationProbability);
 
 
