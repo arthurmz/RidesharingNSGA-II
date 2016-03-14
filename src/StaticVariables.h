@@ -31,9 +31,5 @@ const static int RIDERS_UNMATCHED = 3;
 
 const static int MAX_SERVICES_MALLOC_ROUTE = 40; //A quantidade de services alocados por rota
 
-int * index_array_riders;
-int * index_array_drivers;
-int * index_array_caronas_inserir;
-
 
 #endif /* STATICVARIABLES_H_ */

@@ -16,6 +16,77 @@
 #include "NSGAII.h"
 #include "Calculations.h"
 
+
+//Inicializa vetores globais úteis
+void initialize_mem(Graph * g){
+	malloc_rota_clone();
+	index_array_rotas = malloc(g->drivers * sizeof(Request*));
+	index_array_riders = malloc(g->riders * sizeof(int));
+	index_array_drivers = malloc(g->drivers * sizeof(int));
+	index_array_half_drivers = malloc(g->drivers/2 * sizeof(int));
+	index_array_caronas_inserir = malloc(MAX_SERVICES_MALLOC_ROUTE * 10 * sizeof(int));
+	for (int i = 0; i < g->riders; i++){
+		index_array_riders[i] = i;
+	}
+	for (int i = 0; i < g->drivers; i++){
+		index_array_drivers[i] = i;
+	}
+	for (int i = 0; i < g->drivers/2; i++){
+		index_array_half_drivers[i] = i;
+	}
+	for (int i = 0; i < (MAX_SERVICES_MALLOC_ROUTE * 10); i++){
+		index_array_caronas_inserir[i] = i;
+	}
+}
+
+void setup_matchable_riders(Graph * g){
+	Individuo * individuoTeste = generate_random_individuo(g, false);
+	for (int i = 0; i < individuoTeste->size; i++){
+		index_array_rotas[i] = individuoTeste->cromossomo[i].list[0].r;
+	}
+
+	for (int i = 0; i < g->drivers; i++){
+		Request * motoristaGrafo = &g->request_list[i];
+
+		Rota * rota = &individuoTeste->cromossomo[i];
+
+		for (int j = g->drivers; j < g->total_requests; j++){
+
+			Request * carona = &g->request_list[j];
+
+			if (insere_carona_rota(rota, carona, 1, 1, false) ){
+				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
+			}
+		}
+	}
+	//Ordenando o array de indices das rotas (por matchable_riders)
+	qsort(index_array_rotas, g->drivers, sizeof(Request*), compare_rotas );
+}
+
+
+void print_qtd_matches_minima(Graph * g){
+	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
+	int qtd = 0;
+	int qtd_array[g->total_requests];
+	memset(qtd_array,0,g->total_requests);
+	printf("quantos matches cada motorista consegue\n");
+	for (int i = 0; i < g->drivers; i++){
+		//if (g->request_list[i].matchable_riders > 0)
+			//qtd++;
+		printf("%d: ",g->request_list[i].matchable_riders);
+		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
+			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->id]){
+				qtd_array[g->request_list[i].matchable_riders_list[j]->id] = 1;
+				qtd++;
+			}
+			printf("%d ", g->request_list[i].matchable_riders_list[j]->id);
+		}
+		printf("\n");
+	}
+
+	printf("qtd mínima que deveria conseguir: %d\n", qtd);
+}
+
 /*Parametros: nome do arquivo
  *
  * Inicia com 3 populações
@@ -50,60 +121,10 @@ int main(int argc,  char** argv){
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
-	malloc_rota_clone();
-	index_array_riders = malloc(g->riders * sizeof(int));
-	index_array_drivers = malloc(g->drivers * sizeof(int));
-	index_array_caronas_inserir = malloc(MAX_SERVICES_MALLOC_ROUTE * 10 * sizeof(int));
-	for (int i = 0; i < g->riders; i++){
-		index_array_riders[i] = i;
-	}
-	for (int i = 0; i < g->drivers; i++){
-		index_array_drivers[i] = i;
-	}
-	for (int i = 0; i < (MAX_SERVICES_MALLOC_ROUTE * 10); i++){
-		index_array_caronas_inserir[i] = i;
-	}
+	initialize_mem(g);
+	setup_matchable_riders(g);
+	print_qtd_matches_minima(g);
 
-
-	/*============================================*/
-
-	/*Calculando os caronas que são combináveis para cada motorista*/
-	Service pickupMotorista, deliveryMotorista;
-
-	for (int i = 0; i < g->drivers; i++){
-		Request * motoristaGrafo = &g->request_list[i];
-		pickupMotorista.r = motoristaGrafo;
-		deliveryMotorista.r = motoristaGrafo;
-		for (int j = g->drivers; j < g->total_requests; j++){
-			Request * carona = &g->request_list[j];
-			double pickup, delivery;
-			if ( is_insercao_rota_valida_jt(&pickupMotorista, &deliveryMotorista, carona, &pickup, &delivery)) {
-				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
-			}
-		}
-	}
-
-
-	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
-	int qtd = 0;
-	int qtd_array[g->total_requests];
-	memset(qtd_array,0,g->total_requests);
-	printf("quantos matches cada motorista consegue\n");
-	for (int i = 0; i < g->drivers; i++){
-		//if (g->request_list[i].matchable_riders > 0)
-			//qtd++;
-		printf("%d: ",g->request_list[i].matchable_riders);
-		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
-			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->req_no]){
-				qtd_array[g->request_list[i].matchable_riders_list[j]->req_no] = 1;
-				qtd++;
-			}
-			printf("%d ", g->request_list[i].matchable_riders_list[j]->req_no);
-		}
-		printf("\n");
-	}
-
-	printf("qtd mínima que deveria conseguir: %d\n", qtd);
 
 	/*=====================Início do NSGA-II============================================*/
 	clock_t tic = clock();

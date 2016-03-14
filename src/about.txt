@@ -113,11 +113,11 @@ O earliest delivery time em que o veículo PODE atender o carona e que o carona P
 O latest delivery time em que o veículo PODE atender o carona e que o carona PODE ser atendido. (P)
 
 
-	Veículo 					A|--------|B             C|-----------|D
-								 \         \              /           /
-	Janela de inserção   	      E|--------|F          G|-----------|H
+	Veículo 					A|--------|B             			 C|-----------|D
+								 \         \             			 /           /
+	Janela de inserção   	      E|--------|F          			G|----------|H
 	Janela do carona          I|---------|J                    K|-----------|L
-	Janela real                   M|-----|N                    O|----|P
+	Janela real                   M|-----|N                    		O|------|P
 
 
 					     Verificando se dá pra fazer a inserção;
@@ -137,6 +137,7 @@ if (delivery < O){
 	MAXeXTRAtIME = 0.3 * D3;
 	
 	if (delivery + MAXeXTRAtIME >= O){
+		delivery = O;
 		CARONA VÁLIDA!
 	}
 	else{
@@ -147,8 +148,14 @@ if (delivery < O){
 	}
 }
 
-Se chegou a qui, a carona é válida e seus valores de pickup e delivery são
+Se chegou a qui, a carona é válida e seus valores de pickup e delivery mais cedo possíveis são
 pickup e delivery;
+Esse cenário funciona perfeitamente bem pra inserção de caronas em rotas vazias.
+
+
+Aee, vamos lá. Uma outra forma de verificar essas janelas de tempo é calcular
+a hora de
+
 
 
 

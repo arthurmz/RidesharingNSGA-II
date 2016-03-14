@@ -15,7 +15,8 @@
 typedef struct Request{
 	bool driver;//true -driver, false -rider
 	bool matched;//true se for um carona já combinado
-	int req_no;
+	int id_rota_match;//se for um carona, informa o id da rota que faz parte
+	int id;
 	double request_arrival_time;//A hora em que esse request foi descoberto (desconsiderado pq o problema é estático)
 	double service_time_at_source;//Tempo gasto para atender o source (Diferente da HORA em que chega no source)
 	double service_time_at_delivery;//Tempo gasto para atender o destino (Diferente da HORA em que chega no destino)
@@ -27,6 +28,7 @@ typedef struct Request{
 	double pickup_latest_time;
 	double delivery_earliest_time;
 	double delivery_latest_time;
+
 
 	int matchable_riders;//Somente para o caso do motorista: O número de riders que podem fazer match
 	struct Request ** matchable_riders_list;//Só é preenchida se este for um Driver
@@ -103,13 +105,13 @@ typedef struct Graph{
 //Graph *new_graph(int drivers, int riders, int total_requests);
 void add_Individuo_front(Fronts * fronts, Individuo *p);
 void malloc_rota_clone();
-void update_times(Rota *rota, int posicao_insercao);
+bool update_times(Rota *rota);
 bool dominates(Individuo *a, Individuo *b);
 void add_dominated(Individuo *b, Individuo *a);
 void fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
-bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset);
+bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato);
 void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 void clean_riders_matches(Graph *g);
@@ -120,12 +122,21 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
 void sort_by_objective(Population *pop, int obj);
+int compare_rotas(const void *p, const void *q);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int position);
 void mutation(Individuo *ind, Graph *g, float mutationProbability);
 
+
+int * index_array_riders;
+int * index_array_drivers;
+int * index_array_half_drivers;//metade dos motoristas
+int * index_array_caronas_inserir;
+
+
+Request ** index_array_rotas;//Array com os índices ordenados das rotas, da menor pra maior qtd de matchable_riders
 
 
 #endif /* NSGAII_H_ */

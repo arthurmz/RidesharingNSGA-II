@@ -199,7 +199,7 @@ Graph * parse_file(char *filename){
 		Request *rq = &g->request_list[index_request++];
 
 		sscanf(linha, "%i %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf ",
-				&rq->req_no,
+				&rq->id,
 				&rq->request_arrival_time,
 				&rq->service_time_at_source,
 				&rq->pickup_location_longitude,
@@ -211,7 +211,7 @@ Graph * parse_file(char *filename){
 				&rq->delivery_location_latitude,
 				&rq->delivery_earliest_time,
 				&rq->delivery_latest_time);
-		if(rq->req_no < drivers)
+		if(rq->id < drivers)
 			rq->driver = true;
 		else
 			rq->driver = false;
@@ -294,7 +294,7 @@ void print_to_file_decision_space(Population * p, Graph * g){
 
 		for (int j = 0; j < g->drivers; j++){
 			for (int k = 0; k < individuo->cromossomo[j].length; k++){
-				fprintf(fp, "%d:%c ", individuo->cromossomo[j].list[k].r->req_no, individuo->cromossomo[j].list[k].is_source ? '+' : '-');
+				fprintf(fp, "%d:%c ", individuo->cromossomo[j].list[k].r->id, individuo->cromossomo[j].list[k].is_source ? '+' : '-');
 			}
 			fprintf(fp, " | ");
 			for (int k = 0; k < individuo->cromossomo[j].length; k++){

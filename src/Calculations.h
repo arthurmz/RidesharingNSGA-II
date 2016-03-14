@@ -13,7 +13,7 @@
 double distancia_percorrida(Rota * rota);
 double haversine(Service *a, Service *b);
 double haversine_helper(double lat1, double lon1, double lat2, double lon2);
-double time_between_requests(Service *a, Service *b);
+double time_between_services(Service *a, Service *b);
 double tempo_gasto_rota(Rota *rota, int i, int j);
 double calculate_time_at(Service * actual, Service *ant);
 bool is_dentro_janela_tempo(Rota * rota);
@@ -22,7 +22,5 @@ bool is_distancia_motorista_respeitada(Rota * rota);
 bool is_tempo_respeitado(Rota *rota, int i, int j);
 bool is_tempos_respeitados(Rota *rota);
 bool is_rota_valida(Rota *rota);
-bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result);
-
 
 #endif /* CALCULATIONS_H_ */

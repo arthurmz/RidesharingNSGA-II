@@ -57,7 +57,7 @@ double haversine(Service *a, Service *b){
 }
 
 /*Tempo em minutos*/
-double time_between_requests(Service *a, Service *b){
+double time_between_services(Service *a, Service *b){
 	double distance = haversine(a, b);
 	return distance / VEHICLE_SPEED * 60;
 }
@@ -69,7 +69,7 @@ double tempo_gasto_rota(Rota *rota, int i, int j){
 	for (int k = i; k < j; k++){
 		Service *a = &rota->list[k];
 		Service *b = &rota->list[k+1];
-		accTime += time_between_requests(a,b);
+		accTime += time_between_services(a,b);
 	}
 	return accTime;
 }
@@ -92,7 +92,7 @@ double calculate_time_at(Service * actual, Service *ant){
 		janela_tempo_a = actual->r->delivery_earliest_time;
 
 
-	next_time = ant->service_time + st + time_between_requests(ant, actual);
+	next_time = ant->service_time + st + time_between_services(ant, actual);
 	next_time = fmax(next_time, janela_tempo_a);
 
 
@@ -150,7 +150,7 @@ bool is_distancia_motorista_respeitada(Rota * rota){
 bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
-	double MTT = AT + BT * time_between_requests(source, destiny);
+	double MTT = AT + BT * time_between_services(source, destiny);
 	double accTime = tempo_gasto_rota(rota, i, j);
 	return accTime <= MTT;
 }
@@ -190,80 +190,5 @@ bool is_rota_valida(Rota *rota){
 	/*Verificando se os tempos de chegada em cada ponto atende às janelas de tempo de cada request (Driver e Rider)*/
 	if ( !is_dentro_janela_tempo(rota) || !is_carga_dentro_limite(rota) || !is_tempos_respeitados(rota) || !is_distancia_motorista_respeitada(rota) )
 		return false;
-	return true;
-}
-
-
-/**
- * Verifica se o carona CARONA pode ser inserido sozinho na rota de VEHICLE.
- * Caso seja possível a função armazena a hora de pickup e delivery mais cedo possível
- * em pickup_result e delivery_result.
- *
- * Caso a rota tenha caronas, esta função pode retornar true, mas a rota de fato não ser válida depois de fazer o push_forward
- *
- * Usado para determinar os caronas que podem fazer match com um motorista. e Na inserção
- * propriamente dita do primeiro carona.
- * Implementação disto:
-		Veículo 					A|--------|B             C|-----------|D
-									 \         \              /           /
-		Janela de inserção   	      E|--------|F          G|-----------|H
-		Janela do carona          I|---------|J                    K|-----------|L
-		Janela real                   M|-----|N                    O|----|P
- * */
-bool is_insercao_rota_valida_jt(Service * serviceAnterior, Service *serviceProximo, Request * carona, double* pickup_result, double* delivery_result){
-
-	double A = serviceAnterior->r->pickup_earliest_time;
-	double B = serviceAnterior->r->pickup_latest_time;
-	double C = serviceProximo->r->delivery_earliest_time;
-	double D = serviceProximo->r->delivery_latest_time;
-
-	double distanceVehicleSourceRiderSource = haversine_helper(serviceAnterior->r->pickup_location_latitude, serviceAnterior->r->pickup_location_longitude, carona->pickup_location_latitude, carona->pickup_location_longitude);
-	double distanceRiderDestinyVehicleDestiny = haversine_helper(carona->delivery_location_latitude, carona->delivery_location_longitude, serviceProximo->r->delivery_location_latitude, serviceProximo->r->delivery_location_longitude);
-	double distanceRiderSourceRiderDestiny = haversine_helper(carona->pickup_location_latitude, carona->pickup_location_longitude, carona->delivery_location_latitude, carona->delivery_location_longitude);
-
-	double E = A + distanceVehicleSourceRiderSource;
-	double F = B + distanceVehicleSourceRiderSource;
-	double G = C - distanceRiderDestinyVehicleDestiny;
-	double H = D - distanceRiderDestinyVehicleDestiny;
-
-	double I = carona->pickup_earliest_time;
-	double J = carona->pickup_latest_time;
-	double K = carona->delivery_earliest_time;
-	double L = carona->delivery_latest_time;
-
-	if (J < E || K  >  H)
-		return false;
-
-	double M = fmax(I, E);
-	double N = fmin(J, F);
-	double O = fmax(G, K);
-	double P = fmin(H, L);
-
-	if (N < M || P < O)
-		return false;
-
-	double pickup = M;
-	double delivery = M + distanceRiderSourceRiderDestiny;
-
-	if (delivery > P)
-		return false;
-
-	if (delivery < O){
-		double MAXeXTRAtIME = (BD_FRAC) * distanceRiderSourceRiderDestiny;
-		if (delivery + MAXeXTRAtIME >= O){
-			*pickup_result = pickup;
-			*delivery_result = delivery;
-			return true;
-		}
-		else{
-			delivery = O;
-			pickup = delivery + MAXeXTRAtIME - distanceRiderSourceRiderDestiny;
-			if (pickup > N)
-				return false;
-		}
-	}
-
-	*pickup_result = pickup;
-	*delivery_result = delivery;
 	return true;
 }
