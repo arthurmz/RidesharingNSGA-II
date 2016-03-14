@@ -99,6 +99,18 @@ double calculate_time_at(Service * actual, Service *ant){
 	return next_time;
 }
 
+inline double get_earliest_time_service(Service * atual){
+	if (atual->is_source)
+		return atual->r->pickup_earliest_time;
+	return atual->r->delivery_earliest_time;
+}
+
+inline double get_latest_time_service(Service * atual){
+	if (atual->is_source)
+		return atual->r->pickup_latest_time;
+	return atual->r->delivery_latest_time;
+}
+
 bool is_dentro_janela_tempo(Rota * rota){
 
 	for (int i = 0; i < rota->length-1; i++){

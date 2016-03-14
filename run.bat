@@ -1,1 +1,1 @@
-.\Release\RidesharingNSGA-II.exe .\instances\RM698_L60.txt 100 100 1 0.1 0
+.\Release\RidesharingNSGA-II.exe .\instances\RM744_L60.txt 100 100 1 0.1 0

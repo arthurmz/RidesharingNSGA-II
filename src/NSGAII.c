@@ -264,29 +264,25 @@ bool crowded_comparison_operator(Individuo *a, Individuo *b){
 
 
 /*Tenta empurar os services uma certa quantidade de tempo*/
-bool push_forward(Rota * rota, int position, double fp){
+bool push_forward(Rota * rota, int position, double pf){
 	for (int i = position; i < rota->length; i++){
-		if (fp == 0) return true;
+		if (pf == 0) return true;
 		Service * svc = &rota->list[i];
-		double at, bt;
-		if (svc->is_source){
-			at = svc->r->pickup_earliest_time;
-			bt = svc->r->pickup_latest_time;
-		}
-		else{
-			at = svc->r->delivery_earliest_time;
-			bt = svc->r->delivery_latest_time;
-		}
+		double at = get_earliest_time_service(svc);
+		double bt = get_latest_time_service(svc);
 
 		double waiting_time = haversine(&rota->list[i-1], svc);
-		fp -= waiting_time;
-		if (fp < 0) fp = 0;
-		double new_st = rota->list[i].service_time + fp;
+		pf -= waiting_time;
+		if (pf < 0)
+			pf = 0;
+		double new_st = rota->list[i].service_time + pf;
 		if (new_st < at || new_st > bt)
 			return false;
 	}
 	return true;
 }
+
+
 
 /*
  *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
@@ -306,21 +302,24 @@ bool push_forward(Rota * rota, int position, double fp){
 bool update_times(Rota *rota){
 	Service * motoristaDelivery = &rota->list[rota->length-1];
 
-	motoristaDelivery->service_time = motoristaDelivery->r->pickup_earliest_time;
+	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
 
+	/**
+	 * Calcula o service_time de i =
+	 * service_time_i = service_time_i+1 - tempo(i, i+1)
+	 *
+	 * se o service_time_i < at então service_time_i = at;
+	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
+	 * Isso é feito depois.
+	 *
+	 * Se o service_time_i > bt, service_time_i = bt, e agora
+	 * service_time_i+1 ganha um waiting_time;
+	 */
 	for (int i = rota->length-2; i >= 0; i--){
 		Service *atual = &rota->list[i];
 		Service *prox = &rota->list[i+1];
-		double at, bt;
-		if (atual->is_source){
-			at = atual->r->pickup_earliest_time;
-			bt = atual->r->pickup_latest_time;
-		}
-		else{
-			at = atual->r->delivery_earliest_time;
-			bt = atual->r->delivery_latest_time;
-		}
-
+		double at = get_earliest_time_service(atual);
+		double bt = get_latest_time_service(atual);
 
 		double tbs = time_between_services(atual, prox);
 
@@ -330,22 +329,32 @@ bool update_times(Rota *rota){
 			atual->service_time = bt;
 		}
 		else if (atual->service_time < at){
-			double fp = at - atual->service_time;
+			double pf = at - atual->service_time;
 			atual->service_time = at;
-			bool conseguiu = push_forward(rota, i, fp);
+			bool conseguiu = push_forward(rota, i+1, pf);
 			if (!conseguiu)
 				return false;
 		}
 	}
 
-
+	/**Empurra os service_times entre services que se aproximaram
+	 * por causa do calculo anterior
+	 */
 	/*
 	for (int i = 0; i < rota->length-1; i++){
-		Service *ant = &rota->list[i];
-		Service *actual = &rota->list[i+1];
+		Service * atual = &rota->list[i];
+		Service * next = &rota->list[i+1];
+		double bt = get_latest_time_service(next);
 
-		actual->service_time = calculate_time_at(actual, ant);
-	}*/
+		double tbs = time_between_services(atual, next);
+
+		if (next->service_time < atual->service_time + tbs)
+			next->service_time = atual->service_time + tbs;
+
+		if (next->service_time > bt)
+			return false;
+	}
+	*/
 	return true;
 }
 
@@ -438,14 +447,10 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
 	}
 
-	//Depois de inserir, deve verificar se o ponto anterior precisa ser atualizado
-	//Se for, o push_forward faz o resto do trabalho de corrigir os tempos de pickup e delivery
-	//ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
+	bool rotaValida = update_times(ROTA_CLONE);
 
-	update_times(ROTA_CLONE);
-
-
-	bool rotaValida = is_rota_valida(ROTA_CLONE);
+	if (rotaValida)
+		rotaValida = is_rota_valida(ROTA_CLONE);
 
 	if (rotaValida && inserir_de_fato){
 		carona->matched = true;
@@ -754,6 +759,7 @@ void mutation(Individuo *ind, Graph *g, float mutationProbability){
 	float accept = (float)rand() / RAND_MAX;
 
 	if (accept < mutationProbability){
+		shuffle(index_array_half_drivers, g->drivers/2);
 		transfer_rider(ind, g);
 	}
 }
@@ -787,9 +793,7 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 		shuffle(index_array, g->riders);
 		repair(offspring2, g, 2);
 
-		shuffle(index_array_half_drivers, g->drivers/2);
 		mutation(offspring1, g, mutationProbability);
-		shuffle(index_array_half_drivers, g->drivers/2);
 		mutation(offspring2, g, mutationProbability);
 		offspring->size += 2;
 	}
