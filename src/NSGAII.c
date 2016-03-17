@@ -268,11 +268,13 @@ bool push_forward(Rota * rota, int position, double pf){
 	for (int i = position; i < rota->length; i++){
 		if (pf == 0) return true;
 		Service * svc = &rota->list[i];
+		Service * ant = &rota->list[i-1];
 		double at = get_earliest_time_service(svc);
 		double bt = get_latest_time_service(svc);
 
-		double waiting_time = haversine(&rota->list[i-1], svc);
-		pf -= waiting_time;
+		double waiting_time = svc->service_time - ant->service_time - haversine(ant, svc);
+		if (waiting_time > 0)
+			pf -= waiting_time;
 		if (pf < 0)
 			pf = 0;
 		double new_st = rota->list[i].service_time + pf;
