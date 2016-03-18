@@ -664,6 +664,19 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 		copy_rota(parent1, offspring1, crossoverPoint, rotaSize);
 		copy_rota(parent1, offspring2, 0, crossoverPoint);
 		copy_rota(parent2, offspring2, crossoverPoint, rotaSize);
+
+		int index_array[g->riders];
+		for (int l = 0; l < g->riders; l++){
+			index_array[l] = l;
+		}
+
+		clean_riders_matches(g);
+		shuffle(index_array, g->riders);
+		repair(offspring1, g, 1);
+
+		clean_riders_matches(g);
+		shuffle(index_array, g->riders);
+		repair(offspring2, g, 2);
 	}
 	else{
 		copy_rota(parent1, offspring1, 0, rotaSize);
@@ -770,11 +783,6 @@ void mutation(Individuo *ind, Graph *g, float mutationProbability){
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
 void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability, float mutationProbability){
-	int index_array[g->riders];
-	for (int l = 0; l < g->riders; l++){
-		index_array[l] = l;
-	}
-
 	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
 	int i = 0;
 	while (offspring->size < parents->size){
@@ -786,14 +794,6 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 		Individuo *offspring2 = offspring->list[i];
 
 		crossover(parent1, parent2, offspring1, offspring2, g, crossoverProbability);
-
-		clean_riders_matches(g);
-		shuffle(index_array, g->riders);
-		repair(offspring1, g, 1);
-
-		clean_riders_matches(g);
-		shuffle(index_array, g->riders);
-		repair(offspring2, g, 2);
 
 		mutation(offspring1, g, mutationProbability);
 		mutation(offspring2, g, mutationProbability);

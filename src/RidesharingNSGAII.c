@@ -164,6 +164,7 @@ int main(int argc,  char** argv){
 	printf("Imprimindo o ultimo front obtido:\n");
 	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
+	printf("Número de riders combinados: %f\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
 
     printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
 
