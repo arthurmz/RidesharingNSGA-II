@@ -69,7 +69,9 @@ void print_qtd_matches_minima(Graph * g){
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
 	int qtd = 0;
 	int qtd_array[g->total_requests];
-	memset(qtd_array,0,g->total_requests);
+	for (int i = 0; i < g->total_requests; i++){
+		qtd_array[i] = 0;
+	}
 	fprintf(fp,"quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
 		//if (g->request_list[i].matchable_riders > 0)
