@@ -101,7 +101,6 @@ int main(int argc,  char** argv){
 		return 0;
 	}
 	unsigned int seed = time(NULL);
-	srand (seed);
 	//srand (3);
 	//Parametros (variáveis)
 	int POPULATION_SIZE;
@@ -119,9 +118,12 @@ int main(int argc,  char** argv){
 			sscanf(argv[5], "%f", &mutationProbability);
 	if (argc >= 7)
 		sscanf(argv[6], "%d", &PRINT_ALL_GENERATIONS);
+	if (argc >= 8)
+		sscanf(argv[7], "%u", &seed);
 	Graph * g = (Graph*)parse_file(filename);
 	if (g == NULL) return 0;
 
+	srand (seed);
 	initialize_mem(g);
 	setup_matchable_riders(g);
 	print_qtd_matches_minima(g);
@@ -168,6 +170,7 @@ int main(int argc,  char** argv){
 	printf("Número de riders combinados: %f\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
 
     printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+    printf("Seed: %u\n", seed);
 
 	print_to_file_decision_space(frontsList->list[0],g,seed);
 
