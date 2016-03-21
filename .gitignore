@@ -34,4 +34,5 @@
 
 output.txt
 espaco_decisao.txt
+*.mk
 /Release/
