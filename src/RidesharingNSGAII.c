@@ -65,26 +65,28 @@ void setup_matchable_riders(Graph * g){
 
 
 void print_qtd_matches_minima(Graph * g){
+	FILE *fp=fopen("qtd_matches_minima.txt", "w");
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
 	int qtd = 0;
 	int qtd_array[g->total_requests];
 	memset(qtd_array,0,g->total_requests);
-	printf("quantos matches cada motorista consegue\n");
+	fprintf(fp,"quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
 		//if (g->request_list[i].matchable_riders > 0)
 			//qtd++;
-		printf("%d: ",g->request_list[i].matchable_riders);
+		fprintf(fp,"%d: ",g->request_list[i].matchable_riders);
 		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
 			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->id]){
 				qtd_array[g->request_list[i].matchable_riders_list[j]->id] = 1;
 				qtd++;
 			}
-			printf("%d ", g->request_list[i].matchable_riders_list[j]->id);
+			fprintf(fp,"%d ", g->request_list[i].matchable_riders_list[j]->id);
 		}
-		printf("\n");
+		fprintf(fp,"\n");
 	}
 
-	printf("qtd mínima que deveria conseguir: %d\n", qtd);
+	fprintf(fp,"qtd mínima que deveria conseguir: %d\n", qtd);
+	fclose(fp);
 }
 
 /*Parametros: nome do arquivo
