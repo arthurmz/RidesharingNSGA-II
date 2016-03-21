@@ -100,13 +100,14 @@ int main(int argc,  char** argv){
 		printf("Argumentos insuficientes\n");
 		return 0;
 	}
-	srand (time(NULL));
+	unsigned int seed = time(NULL);
+	srand (seed);
 	//srand (3);
 	//Parametros (variáveis)
 	int POPULATION_SIZE;
 	int ITERATIONS;
 	int PRINT_ALL_GENERATIONS = 0;
-	float crossoverProbability = 0.75;
+	float crossoverProbability = 0.95;
 	float mutationProbability = 0.1;
 	char *filename = argv[1];
 
@@ -168,7 +169,7 @@ int main(int argc,  char** argv){
 
     printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
 
-	print_to_file_decision_space(frontsList->list[0],g);
+	print_to_file_decision_space(frontsList->list[0],g,seed);
 
 	dealoc_full_population(parents);
 	dealoc_full_population(children);
