@@ -219,14 +219,14 @@ void crowding_distance_assignment(Population *pop){
 		pop->list[0]->crowding_distance = FLT_MAX;
 		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
 
-		float obj_min = pop->list[0]->objetivos[k];//valor min do obj k
-		float obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
+		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
+		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
 
-		float diff = fmax(0.0001, obj_max - obj_min);
+		double diff = fmax(0.0001, obj_max - obj_min);
 
 		for (int z = 1; z < pop->size -1; z++){
-			float prox_obj = pop->list[z+1]->objetivos[k];
-			float ant_obj = pop->list[z-1]->objetivos[k];
+			double prox_obj = pop->list[z+1]->objetivos[k];
+			double ant_obj = pop->list[z-1]->objetivos[k];
 
 			if (pop->list[z]->crowding_distance != FLT_MAX)
 				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
@@ -470,9 +470,6 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
 	if (posicao_insercao <= 0 || offset <= 0) return;
 
-	if (rota->length == 2)
-		printf("rota vai ficar vazia");
-
 	for (int i = posicao_insercao; i < rota->length-1; i++){
 		rota->list[i] = rota->list[i+1];
 	}
@@ -646,13 +643,13 @@ Individuo * tournamentSelection(Population * parents){
 	return best;
 }
 
-void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, float crossoverProbability){
+void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability){
 	int rotaSize = g->drivers;
 	offspring1->size = rotaSize;
 	offspring2->size = rotaSize;
 
 	int crossoverPoint = 1 + (rand() % (rotaSize-1));
-	float accept = (float)rand() / RAND_MAX;
+	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < crossoverProbability){
 		copy_rota(parent2, offspring1, 0, crossoverPoint);
@@ -713,31 +710,30 @@ void repair(Individuo *offspring, Graph *g, int position){
  * riders para outra com menos.
  */
 void transfer_rider(Individuo * ind, Graph * g){
-	Rota * rotaInserir;
-	Rota * rotaRemover;
+	Rota * rotaInserir = NULL;
+	Rota * rotaRemover = NULL;
 	Request * caronaInserir;
 	Request * motoristaInserir;
 	bool ok = false;
-	// busca entre a metade dos motoristas "menores" o primeiro sem match que pode ter um mach
-	for (int i = 0 ; i < g->drivers/2; i++){
-		int k = index_array_half_drivers[i];
+
+	for (int i = 0 ; i < g->drivers; i++){
+		int k = index_array_drivers[i];
 		rotaInserir = &ind->cromossomo[k];
 		motoristaInserir = &g->request_list[k];
 
 		if (rotaInserir->length/2 - 1 < motoristaInserir->matchable_riders){
-
 			for (int p =0; p < motoristaInserir->matchable_riders; p++){
-				if ( motoristaInserir->matchable_riders_list[p]->matched
-						&& motoristaInserir->matchable_riders_list[p]->id_rota_match != rotaInserir->id
-						&& motoristaInserir->matchable_riders_list[p]->id_rota_match >= g->drivers/2){
-					caronaInserir = motoristaInserir->matchable_riders_list[p];
-					rotaRemover = &ind->cromossomo[caronaInserir->id_rota_match];
+				Request * caronaTemp = motoristaInserir->matchable_riders_list[p];
+				Rota * rotaTemp = &ind->cromossomo[caronaTemp->id_rota_match];
+
+				if ( caronaTemp->matched && rotaTemp->id != rotaInserir->id && rotaInserir->length < rotaTemp->length){
+					caronaInserir = caronaTemp;
+					rotaRemover = rotaTemp;
 					ok = true;
 					break;
 				}
 			}
-			if (ok)
-				break;
+			if (ok) break;
 		}
 	}
 
@@ -765,8 +761,8 @@ void transfer_rider(Individuo * ind, Graph * g){
 }
 
 /** 1a mutação: remover o carona de uma rota e inserir em um motorista onde só cabe um carona*/
-void mutation(Individuo *ind, Graph *g, float mutationProbability){
-	float accept = (float)rand() / RAND_MAX;
+void mutation(Individuo *ind, Graph *g, double mutationProbability){
+	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < mutationProbability){
 		shuffle(index_array_half_drivers, g->drivers/2);
@@ -777,7 +773,7 @@ void mutation(Individuo *ind, Graph *g, float mutationProbability){
 
 
 /*Gera uma população de filhos, usando seleção, crossover e mutação*/
-void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability, float mutationProbability){
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability){
 	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
 	int i = 0;
 	while (offspring->size < parents->size){

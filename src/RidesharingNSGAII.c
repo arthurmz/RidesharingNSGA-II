@@ -68,18 +68,21 @@ void print_qtd_matches_minima(Graph * g){
 	FILE *fp=fopen("qtd_matches_minima.txt", "w");
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
 	int qtd = 0;
+	int motor_array[g->drivers];
 	int qtd_array[g->total_requests];
+	for (int i = 0; i < g->drivers; i++){
+		motor_array[0] = 0;
+	}
 	for (int i = 0; i < g->total_requests; i++){
 		qtd_array[i] = 0;
 	}
 	fprintf(fp,"quantos matches cada motorista consegue\n");
 	for (int i = 0; i < g->drivers; i++){
-		//if (g->request_list[i].matchable_riders > 0)
-			//qtd++;
 		fprintf(fp,"%d: ",g->request_list[i].matchable_riders);
 		for (int j = 0; j < g->request_list[i].matchable_riders; j++){
-			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->id]){
+			if (!qtd_array[g->request_list[i].matchable_riders_list[j]->id] && !motor_array[i]){
 				qtd_array[g->request_list[i].matchable_riders_list[j]->id] = 1;
+				motor_array[i] = 1;
 				qtd++;
 			}
 			fprintf(fp,"%d ", g->request_list[i].matchable_riders_list[j]->id);
@@ -110,16 +113,16 @@ int main(int argc,  char** argv){
 	int POPULATION_SIZE;
 	int ITERATIONS;
 	int PRINT_ALL_GENERATIONS = 0;
-	float crossoverProbability = 0.95;
-	float mutationProbability = 0.1;
+	double crossoverProbability = 0.95;
+	double mutationProbability = 0.1;
 	char *filename = argv[1];
 
 	sscanf(argv[2], "%d", &POPULATION_SIZE);
 	sscanf(argv[3], "%d", &ITERATIONS);
 	if (argc >= 5)
-		sscanf(argv[4], "%f", &crossoverProbability);
+		sscanf(argv[4], "%lf", &crossoverProbability);
 	if (argc >= 6)
-			sscanf(argv[5], "%f", &mutationProbability);
+			sscanf(argv[5], "%lf", &mutationProbability);
 	if (argc >= 7)
 		sscanf(argv[6], "%d", &PRINT_ALL_GENERATIONS);
 	if (argc >= 8)
@@ -171,9 +174,9 @@ int main(int argc,  char** argv){
 	printf("Imprimindo o ultimo front obtido:\n");
 	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
-	printf("Número de riders combinados: %f\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
+	printf("Número de riders combinados: %lf\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
 
-    printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+    printf("Tempo decorrido: %lf segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
     printf("Seed: %u\n", seed);
 
 	print_to_file_decision_space(frontsList->list[0],g,seed);

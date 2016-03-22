@@ -62,14 +62,14 @@ typedef struct Individuo{
 	//Cada Service é uma coleta ou entrega(tanto de motorista como de carona)
 	Rota * cromossomo;
 	int size;//tamanho da lista de rotas
-	float objetivos[4];
+	double objetivos[4];
 
 	int dominated_by_count;//Número de soluções que dominam ind
 	struct Individuo **dominates_list;//Conjunto de soluções dominadas por this
 	int dominates_list_capacity;
 	int dominates_list_count;//número de soluções dominadas por ind
 	int rank;//Qual front este indivíduo está
-	float crowding_distance;
+	double crowding_distance;
 }Individuo;
 
 /*Os indivíduos são armazenados no heap pra
@@ -118,7 +118,7 @@ void clean_riders_matches(Graph *g);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);
-void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, float crossoverProbability, float mutationProbability );
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability );
 void empty_front_list(Fronts * f);
 void sort_by_crowding_distance_assignment(Population *front);
 void sort_by_objective(Population *pop, int obj);
@@ -127,7 +127,7 @@ void select_parents_by_rank(Fronts *frontsList, Population *parents, Population 
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int position);
-void mutation(Individuo *ind, Graph *g, float mutationProbability);
+void mutation(Individuo *ind, Graph *g, double mutationProbability);
 
 
 int * index_array_riders;
