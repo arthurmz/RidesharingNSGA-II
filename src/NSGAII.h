@@ -5,8 +5,8 @@
  *      Author: arthur
  */
 
-#ifndef GENERATIONALGA_H_
-#define GENERATIONALGA_H_
+#ifndef NSGAII_H_
+#define NSGAII_H_
 
 #include <stdbool.h>
 #include "StaticVariables.h"
@@ -64,7 +64,12 @@ typedef struct Individuo{
 	int size;//tamanho da lista de rotas
 	double objetivos[4];
 
-	double objective_function;
+	int dominated_by_count;//Número de soluções que dominam ind
+	struct Individuo **dominates_list;//Conjunto de soluções dominadas por this
+	int dominates_list_capacity;
+	int dominates_list_count;//número de soluções dominadas por ind
+	int rank;//Qual front este indivíduo está
+	double crowding_distance;
 }Individuo;
 
 /*Os indivíduos são armazenados no heap pra
@@ -98,20 +103,28 @@ typedef struct Graph{
 
 
 //Graph *new_graph(int drivers, int riders, int total_requests);
+void add_Individuo_front(Fronts * fronts, Individuo *p);
 void malloc_rota_clone();
-bool update_times(Rota *rota, int p);
+bool update_times(Rota *rota);
+bool dominates(Individuo *a, Individuo *b);
+void add_dominated(Individuo *b, Individuo *a);
+void fast_nondominated_sort(Population *population, Fronts * fronts);
+void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato);
 void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 void clean_riders_matches(Graph *g);
-double evaluate_objective_functions(Individuo *idv, Graph *g);
+void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void free_population(Population *population);
 void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability );
 void empty_front_list(Fronts * f);
+void sort_by_crowding_distance_assignment(Population *front);
 void sort_by_objective(Population *pop, int obj);
 int compare_rotas(const void *p, const void *q);
+void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
+void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g, int position);
 void mutation(Individuo *ind, Graph *g, double mutationProbability);
@@ -119,10 +132,11 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability);
 
 int * index_array_riders;
 int * index_array_drivers;
+int * index_array_half_drivers;//metade dos motoristas
 int * index_array_caronas_inserir;
 
 
 Request ** index_array_rotas;//Array com os índices ordenados das rotas, da menor pra maior qtd de matchable_riders
 
 
-#endif /* GENERATIONALGA_H_ */
+#endif /* NSGAII_H_ */

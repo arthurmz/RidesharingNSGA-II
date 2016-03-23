@@ -123,10 +123,10 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/RidesharingOriginal"/>
+			<resource resourceType="PROJECT" workspacePath="/RidesharingNSGA-II"/>
 		</configuration>
 		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/RidesharingOriginal"/>
+			<resource resourceType="PROJECT" workspacePath="/RidesharingNSGA-II"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>

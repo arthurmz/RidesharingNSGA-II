@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "Helper.h"
-#include "GenerationalGA.h"
+#include "NSGAII.h"
 #include "Calculations.h"
 
 
@@ -20,6 +20,105 @@ void malloc_rota_clone(){
 	/*Criando uma rota para cópia e validação das rotas*/
 	ROTA_CLONE = (Rota*) calloc(1, sizeof(Rota));
 	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+}
+
+/*Adiciona o indivíduo de rank k no front k de FRONTS
+ * Atualiza o size de FRONTS caso o rank seja maior*/
+void add_Individuo_front(Fronts * fronts, Individuo *p){
+	Population *fronti = fronts->list[p->rank];
+	if (fronts->size < p->rank + 1){
+	  fronti->size = 0;
+	  fronts->size++;
+	}
+	
+	fronti->list[fronti->size] = p;
+	fronti->size++;
+}
+
+/*Verifica se A domina B (melhor em pelo menos 1 obj)*/
+bool dominates(Individuo *a, Individuo *b){
+	bool smaller_found = false;
+	for (int i = 0; i < QTD_OBJECTIVES; i++){
+		if (a->objetivos[i] < b->objetivos[i])
+			smaller_found = true;
+		if (a->objetivos[i] > b->objetivos[i])
+			return false;
+	}
+	return smaller_found;
+}
+
+void add_dominated(Individuo *a, Individuo *b){
+	if (a->dominates_list == NULL){
+		a->dominates_list = malloc(32* sizeof(Individuo*));
+		a->dominates_list_capacity = 32;
+	}
+
+	if (a->dominates_list_capacity <= a->dominates_list_count){
+		a->dominates_list_capacity += 32;
+		Individuo **temp = realloc(a->dominates_list, a->dominates_list_capacity * sizeof(Individuo*));
+		if (temp != NULL) a->dominates_list = temp;
+	}
+	a->dominates_list[a->dominates_list_count] = b;
+	a->dominates_list_count++;
+
+}
+
+/*Ordena os indivíduos segundo o critério de não dominação*/
+void fast_nondominated_sort(Population *population, Fronts * fronts){
+	/*====================Zerando o frontlist==================================*/
+	for (int i = 0; i < fronts->size; i++){
+		fronts->list[i]->size = 0;
+	}
+	fronts->size = 0;
+
+	/*===================Zerando o dominated counts============================*/
+	for (int i = 0; i < population->size; i++){
+		population->list[i]->dominated_by_count = 0;
+		population->list[i]->dominates_list_count = 0;
+	}
+	
+	//Primeiro passo, computando as dominancias
+	for (int i = 0; i < population->size; i++){
+		Individuo *a = population->list[i];
+		for (int j = 0; j < population->size; j++){
+			if (i == j) continue;
+			Individuo *b = population->list[j];
+			if (dominates(a,b)){
+				add_dominated(a, b);
+			}
+			else if (dominates(b,a)){
+				a->dominated_by_count++;
+			}
+		}
+		if (a->dominated_by_count == 0){
+			a->rank = 0;
+			add_Individuo_front(fronts, a);
+		}
+	}
+	
+	int index_front = 0;
+	//Iterando enquanto existirem novos fronts
+	while (index_front < fronts->size){
+		Population * front_i = fronts->list[index_front];
+		//Iterando sobre os elementos do front index_front
+		for (int i = 0; i < front_i->size; i++){
+			Individuo *p = front_i->list[i];
+
+			for (int k = 0; k < p->dominates_list_count; k++){
+				Individuo *indv_dominated = p->dominates_list[k];
+				if (indv_dominated->dominated_by_count > 0){
+					indv_dominated->dominated_by_count--;
+				}
+				if (indv_dominated->dominated_by_count == 0){
+					indv_dominated->rank = index_front+1;
+					add_Individuo_front(fronts, indv_dominated);
+					indv_dominated->dominated_by_count = -1;//Evita que o mesmo idv seja re-add em outras iteracoes
+					//count_reps++;
+				}
+			}
+		}
+		index_front++;
+	}
 }
 
 /*Pra poder usar a função qsort com N objetivos,
@@ -108,6 +207,62 @@ void sort_by_objective(Population *pop, int obj){
 }
 
 
+/*Deve ser chamado depois de determinar as funções objetivo*/
+void crowding_distance_assignment(Population *pop){
+	for (int i = 0; i < pop->size; i++){
+		pop->list[i]->crowding_distance = 0;
+	}
+	for (int k = 0; k < QTD_OBJECTIVES; k++){
+
+		sort_by_objective(pop, k);
+
+		pop->list[0]->crowding_distance = FLT_MAX;
+		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
+
+		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
+		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
+
+		double diff = fmax(0.0001, obj_max - obj_min);
+
+		for (int z = 1; z < pop->size -1; z++){
+			double prox_obj = pop->list[z+1]->objetivos[k];
+			double ant_obj = pop->list[z-1]->objetivos[k];
+
+			if (pop->list[z]->crowding_distance != FLT_MAX)
+				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
+		}
+
+	}
+}
+
+/*Pra poder usar a função qsort com N objetivos,
+ * precisamos implementar os n algoritmos de compare*/
+int compareByCrowdingDistanceMax(const void *p, const void *q) {
+    int ret;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
+    if (x->crowding_distance == y->crowding_distance)
+        ret = 0;
+    else if (x->crowding_distance > y->crowding_distance)
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+
+
+void sort_by_crowding_distance_assignment(Population *front){
+	//crowding_distance_assignment(front); //jah eh feito antes
+	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
+}
+
+bool crowded_comparison_operator(Individuo *a, Individuo *b){
+	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
+}
+
+
+
 /*Tenta empurar os services uma certa quantidade de tempo*/
 bool push_forward(Rota * rota, int position, double pf){
 	for (int i = position; i < rota->length; i++){
@@ -130,34 +285,78 @@ bool push_forward(Rota * rota, int position, double pf){
 }
 
 
-/**
- * Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
- * Ao mesmo tempo, se identificar uma situação onde não dá pra inserir, retorna false
- *
- * Diferentemente do update_times do nsga-ii. Este aqui atualiza sequencialmente
- * os tempos da rota à partir do ponto P inserido.
- */
-bool update_times(Rota *rota, int p){
 
-	for (int i = p; i >= rota->length; i++){
-		Service *anterior = &rota->list[i-1];
+/*
+ *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
+ *Ao mesmo tempo, se identificar uma situação onde não dá pra inserir, retorna false
+ *
+ *coloca o servicetime do delivery do motorista como o mais cedo
+ *percorre a rota do fim pro início, setando o servicetime
+ *st_i = st_i+1 - tempo(i, i+1);
+ *se st_i < earliest_time
+ *	push_forward(i+1);
+ *se st_i > latest_time
+ *	st_i = latest_time;
+ *
+ *Faz isso pra todo mundo, depois minimiza o tempo de espera.
+ *
+ * */
+bool update_times(Rota *rota){
+	Service * motoristaDelivery = &rota->list[rota->length-1];
+
+	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
+
+	/**
+	 * Calcula o service_time de i =
+	 * service_time_i = service_time_i+1 - tempo(i, i+1)
+	 *
+	 * se o service_time_i < at então service_time_i = at;
+	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
+	 * Isso é feito depois.
+	 *
+	 * Se o service_time_i > bt, service_time_i = bt, e agora
+	 * service_time_i+1 ganha um waiting_time;
+	 */
+	for (int i = rota->length-2; i >= 0; i--){
 		Service *atual = &rota->list[i];
+		Service *prox = &rota->list[i+1];
 		double at = get_earliest_time_service(atual);
 		double bt = get_latest_time_service(atual);
 
-		double tbs = time_between_services(anterior, atual);
+		double tbs = time_between_services(atual, prox);
 
-		atual->service_time = anterior->service_time - tbs;
+		atual->service_time = prox->service_time - tbs;
 
 		if (atual->service_time > bt){
 			atual->service_time = bt;
-			return false;
 		}
 		else if (atual->service_time < at){
+			double pf = at - atual->service_time;
 			atual->service_time = at;
+			bool conseguiu = push_forward(rota, i+1, pf);
+			if (!conseguiu)
+				return false;
 		}
 	}
 
+	/**Empurra os service_times entre services que se aproximaram
+	 * por causa do calculo anterior
+	 */
+	/*
+	for (int i = 0; i < rota->length-1; i++){
+		Service * atual = &rota->list[i];
+		Service * next = &rota->list[i+1];
+		double bt = get_latest_time_service(next);
+
+		double tbs = time_between_services(atual, next);
+
+		if (next->service_time < atual->service_time + tbs)
+			next->service_time = atual->service_time + tbs;
+
+		if (next->service_time > bt)
+			return false;
+	}
+	*/
 	return true;
 }
 
@@ -192,12 +391,17 @@ void minimize_waiting_time(Rota * rota){
 }
 
 
-/**
- * O método de inserção do algoritmo original é o seguinte:
- * Em uma rota aleatória, e com uma carona aleatória a adicionar, determinamos o ponto P de inserção.
- * Então os tempos da rota são determinados sequencialmente à partir do ponto anterior.
- * A inserção testa todas as possibilidades do delivery de P+1.
- */
+/*
+ * A0101B = tamanho 6
+ * 			de 0 a 5
+ * 	Inserir na posiçao 0 não pode pq já tem o motorista
+ * 	Inserir na posição 1, empurra os demais pra frente
+ * 	Inserir o destino é contado à partir da origem (offset)
+ * 	offset = 0 não pode pq é o proprio origem, 1 pode e é o próximo,
+ * 	2 é o que pula um e insere.
+ *
+ * 	inserir_de_fato - Se deve inserir mesmo ou é apenas um teste
+ * */
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
 	if (posicao_insercao <= 0 || offset <= 0) return false;
 
@@ -240,7 +444,7 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
 	}
 
-	bool rotaValida = update_times(ROTA_CLONE, posicao_insercao);
+	bool rotaValida = update_times(ROTA_CLONE);
 
 	if (rotaValida)
 		rotaValida = is_rota_valida(ROTA_CLONE);
@@ -287,11 +491,12 @@ void clean_riders_matches(Graph *g){
 void evaluate_objective_functions_pop(Population* p, Graph *g){
 	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
 		evaluate_objective_functions(p->list[i], g);
+		//clean_riders_matches(g);
 	}
 }
 
 
-double evaluate_objective_functions(Individuo *idv, Graph *g){
+void evaluate_objective_functions(Individuo *idv, Graph *g){
 	double distance = 0;
 	double vehicle_time = 0;
 	double rider_time = 0;
@@ -325,17 +530,6 @@ double evaluate_objective_functions(Individuo *idv, Graph *g){
 	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
 	idv->objetivos[RIDERS_UNMATCHED] = riders_unmatched;
 
-	double alfa = 0.7;
-	double beta = 0.1;
-	double epsilon = 0.1;
-	double sigma = 0.1;
-	idv->objective_function =
-			alfa * idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP]
-			+beta * idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS]
-			+epsilon * idv->objetivos[TOTAL_TIME_RIDER_TRIPS]
-			+sigma * idv->objetivos[RIDERS_UNMATCHED];
-	return idv->objective_function;
-
 }
 
 
@@ -366,19 +560,87 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 }
 
 
+/*Pega os melhores N indivíduos do frontList e joga na população pai.
+ * Os restantes vão pra população filho.
+ * Remove da lista de pais e filhos as listas de dominação
+ * "esvazia" o frontsList
+ * */
+void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g){
+	int lastPosition = 0;
+	parents->size = 0;
+	offsprings->size = 0;
+
+
+	/*Para cada um dos fronts, enquanto a qtd de elementos dele couber inteiramente em parents, vai adicionando
+	 * Caso contrário para. pois daí pra frente, só algums desses indivíduos irão para o parent
+	 * o restante desse front em lastPosition e dos próximos fronts vão pro offsprings*/
+	for (int i = 0; i < frontsList->size; i++){
+		Population * front_i = frontsList->list[i];
+		lastPosition = i;
+		crowding_distance_assignment(front_i);
+		if (parents->max_capacity - parents->size >= front_i->size){
+			for (int j = 0; j < front_i->size; j++){
+				parents->list[parents->size++] = front_i->list[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	int restantes_adicionar = parents->max_capacity - parents->size;//Qtd que tem que adicionar aos pais
+
+	//Se restantes_adicionar > 0 então o front atual não comporta todos os elementos de parent
+	if (restantes_adicionar > 0){
+		sort_by_crowding_distance_assignment(frontsList->list[lastPosition]);//ordena
+		for (int k = 0; k < restantes_adicionar; k++){
+			parents->list[parents->size++] = frontsList->list[lastPosition]->list[k];//Adiciona o restante aos pais
+		}
+		//Inserindo no filho o restante desses indivíduos que não couberam nos pais
+		for (int k = restantes_adicionar; k < frontsList->list[lastPosition]->size; k++){
+			offsprings->list[offsprings->size++] = frontsList->list[lastPosition]->list[k];
+		}
+		lastPosition++;
+	}
+
+
+	/*Adicionar todos os restantes de bigpopulation aos filhos*/
+	while (lastPosition < frontsList->size){
+		for (int k = 0; k < frontsList->list[lastPosition]->size; k++){
+			offsprings->list[offsprings->size] = frontsList->list[lastPosition]->list[k];
+			offsprings->size++;
+		}
+		lastPosition++;
+	}
+}
+
+/*Copia o conteúdo das duas populações na terceira.
+ * é uma cópia simples, onde assume-se que os indivíduos estão na heap
+ * "esvazia" p1 e p2*/
+void merge(Population *p1, Population *p2, Population *big_population){
+	big_population->size = 0;//Zera o bigpopulation
+
+	for (int i = 0; i < p1->size + p2->size; i++){
+		if (i < p1->size){
+			big_population->list[i] = p1->list[i];
+		}
+		else{
+			big_population->list[i] = p2->list[i - p1->size];
+		}
+	}
+	big_population->size = p1->size + p2->size;
+}
+
 /*seleção por torneio, k = 2*/
-Individuo * tournamentSelection(Population * parents, Graph * g){
-	int pos = rand() % parents->size;
-	Individuo * idv1 = parents->list[pos];
-	pos = rand() % parents->size;
-	Individuo * idv2 = parents->list[pos];
-
-	evaluate_objective_functions(idv1, g);
-	evaluate_objective_functions(idv2, g);
-
-	if (idv1->objective_function < idv2->objective_function)
-		return idv1;
-	else return idv2;
+Individuo * tournamentSelection(Population * parents){
+	Individuo * best = NULL;
+	for (int i = 0; i < 2; i++){
+		int pos = rand() % parents->size;
+		Individuo * outro = parents->list[pos];
+		if (best == NULL || crowded_comparison_operator(outro, best))
+			best = outro;
+	}
+	return best;
 }
 
 void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability){
@@ -503,6 +765,7 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability){
 	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < mutationProbability){
+		shuffle(index_array_half_drivers, g->drivers/2);
 		transfer_rider(ind, g);
 	}
 }
@@ -515,8 +778,8 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 	int i = 0;
 	while (offspring->size < parents->size){
 
-		Individuo *parent1 = tournamentSelection(parents, g);
-		Individuo *parent2 = tournamentSelection(parents, g);
+		Individuo *parent1 = tournamentSelection(parents);
+		Individuo *parent2 = tournamentSelection(parents);
 
 		Individuo *offspring1 = offspring->list[i++];
 		Individuo *offspring2 = offspring->list[i];

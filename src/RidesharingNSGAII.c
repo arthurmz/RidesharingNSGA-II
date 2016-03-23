@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "Helper.h"
-#include "GenerationalGA.h"
+#include "NSGAII.h"
 #include "Calculations.h"
 
 
@@ -23,12 +23,16 @@ void initialize_mem(Graph * g){
 	index_array_rotas = malloc(g->drivers * sizeof(Request*));
 	index_array_riders = malloc(g->riders * sizeof(int));
 	index_array_drivers = malloc(g->drivers * sizeof(int));
+	index_array_half_drivers = malloc(g->drivers/2 * sizeof(int));
 	index_array_caronas_inserir = malloc(MAX_SERVICES_MALLOC_ROUTE * 10 * sizeof(int));
 	for (int i = 0; i < g->riders; i++){
 		index_array_riders[i] = i;
 	}
 	for (int i = 0; i < g->drivers; i++){
 		index_array_drivers[i] = i;
+	}
+	for (int i = 0; i < g->drivers/2; i++){
+		index_array_half_drivers[i] = i;
 	}
 	for (int i = 0; i < (MAX_SERVICES_MALLOC_ROUTE * 10); i++){
 		index_array_caronas_inserir[i] = i;
@@ -118,7 +122,7 @@ int main(int argc,  char** argv){
 	if (argc >= 5)
 		sscanf(argv[4], "%lf", &crossoverProbability);
 	if (argc >= 6)
-		sscanf(argv[5], "%lf", &mutationProbability);
+			sscanf(argv[5], "%lf", &mutationProbability);
 	if (argc >= 7)
 		sscanf(argv[6], "%d", &PRINT_ALL_GENERATIONS);
 	if (argc >= 8)
@@ -135,40 +139,51 @@ int main(int argc,  char** argv){
 	/*=====================Início do NSGA-II============================================*/
 	clock_t tic = clock();
 	
-	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
+	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
+	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
+	
+	Population * parents = generate_random_population(POPULATION_SIZE, g, false);
 	Population * children = generate_random_population(POPULATION_SIZE, g, false);
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;
 	while(i < ITERATIONS){
 		printf("Iteracao %d...\n", i);
+		evaluate_objective_functions_pop(children, g);
+		merge(parents, children, big_population);
+		fast_nondominated_sort(big_population, frontsList);
+
+		//Aloca os melhores entre os pais e filhos (que foram parar em frontsList) e joga em pais
+		//O restante irá para os filhos, que de qualquer forma será sobreescrito pelo crossover.
+		select_parents_by_rank(frontsList, parents, children, g);
 		crossover_and_mutation(parents, children, g, crossoverProbability, mutationProbability);
 		if (PRINT_ALL_GENERATIONS)
 			print(children);
-		Population * temp = parents;
-		parents = children;
-		children = temp;
 		i++;
 	}
 	
 	//Ao sair do loop, verificamos uma ultima vez o melhor gerado entre os pais e filhos
+	evaluate_objective_functions_pop(parents, g);
 	evaluate_objective_functions_pop(children, g);
+	merge(parents, children, big_population);
+	fast_nondominated_sort(big_population, frontsList);
+
+	evaluate_objective_functions_pop(frontsList->list[0], g);
 
 	clock_t toc = clock();
 	printf("Imprimindo o ultimo front obtido:\n");
-	sort_by_objective(children, RIDERS_UNMATCHED);
-	print(children);
-	printf("Número de riders combinados: %f\n", g->riders - children->list[0]->objetivos[3]);
+	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
+	print(frontsList->list[0]);
+	printf("Número de riders combinados: %lf\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
 
-	printf("Tempo decorrido: %lf segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
-	printf("Seed: %u\n", seed);
+    printf("Tempo decorrido: %lf segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
+    printf("Seed: %u\n", seed);
 
-
-	print_to_file_decision_space(children,g,seed);
+	print_to_file_decision_space(frontsList->list[0],g,seed);
 
 	dealoc_full_population(parents);
 	dealoc_full_population(children);
-	//dealoc_empty_population(big_population);
+	dealoc_empty_population(big_population);
 	//dealoc_fronts(frontsList); :(
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;

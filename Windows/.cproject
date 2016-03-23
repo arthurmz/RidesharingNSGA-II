@@ -119,10 +119,10 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Release">
-			<resource resourceType="PROJECT" workspacePath="/RidesharingOriginal"/>
+			<resource resourceType="PROJECT" workspacePath="/RidesharingNSGA-II"/>
 		</configuration>
 		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/RidesharingOriginal"/>
+			<resource resourceType="PROJECT" workspacePath="/RidesharingNSGA-II"/>
 		</configuration>
 	</storageModule>
 </cproject>
