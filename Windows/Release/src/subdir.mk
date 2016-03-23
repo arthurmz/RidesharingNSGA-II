@@ -4,11 +4,11 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/Calculations.c \
-C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/FunctionTests.c \
-C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/Helper.c \
-C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/NSGAII.c \
-C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/RidesharingNSGAII.c 
+E:/workspace_22_03_2016/RidesharingNSGA-II/src/Calculations.c \
+E:/workspace_22_03_2016/RidesharingNSGA-II/src/FunctionTests.c \
+E:/workspace_22_03_2016/RidesharingNSGA-II/src/Helper.c \
+E:/workspace_22_03_2016/RidesharingNSGA-II/src/NSGAII.c \
+E:/workspace_22_03_2016/RidesharingNSGA-II/src/RidesharingNSGAII.c 
 
 OBJS += \
 ./src/Calculations.o \
@@ -26,38 +26,38 @@ C_DEPS += \
 
 
 # Each subdirectory must supply rules for building sources it contributes
-src/Calculations.o: C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/Calculations.c
+src/Calculations.o: E:/workspace_22_03_2016/RidesharingNSGA-II/src/Calculations.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I. -std=c99 -lm -O0 -O0 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
-src/FunctionTests.o: C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/FunctionTests.c
+src/FunctionTests.o: E:/workspace_22_03_2016/RidesharingNSGA-II/src/FunctionTests.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I. -std=c99 -lm -O0 -O0 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
-src/Helper.o: C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/Helper.c
+src/Helper.o: E:/workspace_22_03_2016/RidesharingNSGA-II/src/Helper.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I. -std=c99 -lm -O0 -O0 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
-src/NSGAII.o: C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/NSGAII.c
+src/NSGAII.o: E:/workspace_22_03_2016/RidesharingNSGA-II/src/NSGAII.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I. -std=c99 -lm -O0 -O0 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
-src/RidesharingNSGAII.o: C:/Users/SIGAA-Des/UFRN/workspace/RidesharingNSGA-II/src/RidesharingNSGAII.c
+src/RidesharingNSGAII.o: E:/workspace_22_03_2016/RidesharingNSGA-II/src/RidesharingNSGAII.c
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -I. -std=c99 -lm -O0 -O0 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	gcc -O3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 
