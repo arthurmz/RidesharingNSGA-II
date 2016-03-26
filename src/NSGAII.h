@@ -132,7 +132,6 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability);
 
 int * index_array_riders;
 int * index_array_drivers;
-int * index_array_half_drivers;//metade dos motoristas
 int * index_array_caronas_inserir;
 
 

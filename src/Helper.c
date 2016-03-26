@@ -322,4 +322,10 @@ void print_to_file_decision_space(Population * p, Graph * g, unsigned int seed){
 	fclose(fp);
 }
 
+/**Preenche o array sequencialmente*/
+void fill_array(int * array, int size){
+	for (int i = 0; i < size; i++){
+		array[i] = i;
+	}
+}
 

@@ -765,7 +765,9 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability){
 	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < mutationProbability){
-		shuffle(index_array_half_drivers, g->drivers/2);
+		int mutation_array[5];
+		fill_array(mutation_array, 5);
+		shuffle(mutation_array, 5);
 		transfer_rider(ind, g);
 	}
 }
