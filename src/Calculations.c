@@ -85,16 +85,10 @@ double calculate_time_at(Service * actual, Service *ant){
 	else
 		st = ant->r->service_time_at_delivery;
 
-	double janela_tempo_a;
-	if (actual->is_source)
-		janela_tempo_a = actual->r->pickup_earliest_time;
-	else
-		janela_tempo_a = actual->r->delivery_earliest_time;
-
+	double at = get_earliest_time_service(actual);
 
 	next_time = ant->service_time + st + time_between_services(ant, actual);
-	next_time = fmax(next_time, janela_tempo_a);
-
+	next_time = fmax(next_time, at);
 
 	return next_time;
 }
@@ -176,7 +170,10 @@ bool is_tempos_respeitados(Rota *rota){
 			Service *destiny = &rota->list[j];
 			if(destiny->is_source || source->r != destiny->r) continue;
 
-			if (!is_tempo_respeitado(rota, i, j)) return false;
+			if (!is_tempo_respeitado(rota, i, j)){
+				return false;
+			}
+			break;
 		}
 	}
 	return true;
