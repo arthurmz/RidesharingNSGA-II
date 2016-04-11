@@ -55,12 +55,11 @@ Individuo * new_individuo(int drivers_qtd, int riders_qtd){
  */
 Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
 	Individuo *idv = new_individuo(g->drivers, g->riders);
+	clean_riders_matches(g);
 
 	for (int x = 0; x < g->drivers ; x++){//pra cada uma das rotas
-		int j = index_array_drivers[x];
-		Rota * rota = &idv->cromossomo[j];
-		Request * driver = &g->request_list[j];
-
+		Rota * rota = &idv->cromossomo[x];
+		Request * driver = &g->request_list[x];
 		//Insere o motorista na rota
 		rota->list[0].r = driver;
 		rota->list[0].is_source = true;
@@ -70,14 +69,10 @@ Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
 		rota->list[1].is_source = false;
 		rota->list[1].service_time = rota->list[0].r->delivery_earliest_time;//Chega na hora mais cedo
 		rota->length = 2;
-
-		if (insereCaronasAleatorias)
-			insere_carona_aleatoria_rota(g, rota);
 	}
-	//Depois de inserir todas as rotas, limpa a lista de matches
-	//Para que o próximo indivíduo possa usa-las
+
 	if (insereCaronasAleatorias)
-		clean_riders_matches(g);
+		insere_carona_aleatoria_individuo(idv);
 
 	return idv;
 }
@@ -89,8 +84,8 @@ Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
 Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias){
 	Population *p = (Population*) new_empty_population(size);
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
-		shuffle(index_array_drivers,g->drivers);
 		Individuo *idv = generate_random_individuo(g, insereCaronasAleatorias);
+		idv->id = p->size;
 		p->list[p->size++] = idv;
 	}
 	return p;

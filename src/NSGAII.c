@@ -467,15 +467,15 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 //	return true;
 }
 
-void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset){
-	if (posicao_insercao <= 0 || offset <= 0) return;
+void desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao, int offset){
+	if (posicao_remocao <= 0 || offset <= 0) return;
 
-	for (int i = posicao_insercao; i < rota->length-1; i++){
+	for (int i = posicao_remocao; i < rota->length-1; i++){
 		rota->list[i] = rota->list[i+1];
 	}
 	rota->length--;
 
-	for (int i = posicao_insercao+offset-1; i < rota->length-1; i++){
+	for (int i = posicao_remocao+offset-1; i < rota->length-1; i++){
 		rota->list[i] = rota->list[i+1];
 	}
 	rota->length--;
@@ -491,7 +491,6 @@ void clean_riders_matches(Graph *g){
 void evaluate_objective_functions_pop(Population* p, Graph *g){
 	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
 		evaluate_objective_functions(p->list[i], g);
-		//clean_riders_matches(g);
 	}
 }
 
@@ -536,7 +535,7 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
-void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
+void insere_carona_aleatoria_rota(Rota* rota){
 	Request * request = &g->request_list[rota->id];
 
 	int qtd_caronas_inserir = request->matchable_riders;
@@ -556,6 +555,18 @@ void insere_carona_aleatoria_rota(Graph *g, Rota* rota){
 		int offset = 1;//TODO, variar o offset
 		if (!carona->matched)
 			insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+	}
+}
+
+/**
+ * Insere caronas aleatórias para todas as caronas da rota
+ * IMPORTANTE: Antes de chamar, todos os caronas já feito match devem estar no grafo
+ */
+void insere_carona_aleatoria_individuo(Individuo * ind){
+	shuffle(index_array_drivers,g->drivers);
+	for (int i = 0; i < ind->size; i++){
+		int j = index_array_drivers[i];
+		insere_carona_aleatoria_rota(&ind->cromossomo[j]);
 	}
 }
 
@@ -648,10 +659,11 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 	offspring1->size = rotaSize;
 	offspring2->size = rotaSize;
 
-	int crossoverPoint = 1 + (rand() % (rotaSize-1));
+	int crossoverPoint = get_random_int(1, rotaSize-2);
 	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < crossoverProbability){
+	
 		copy_rota(parent2, offspring1, 0, crossoverPoint);
 		copy_rota(parent1, offspring1, crossoverPoint, rotaSize);
 		copy_rota(parent1, offspring2, 0, crossoverPoint);
@@ -702,7 +714,7 @@ void repair(Individuo *offspring, Graph *g, int position){
 				rota->list[j].r->id_rota_match = rota->id;
 			}
 		}
-		insere_carona_aleatoria_rota(g, rota);
+		insere_carona_aleatoria_rota(rota);
 	}
 }
 
@@ -779,7 +791,6 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
 	int i = 0;
 	while (offspring->size < parents->size){
-
 		Individuo *parent1 = tournamentSelection(parents);
 		Individuo *parent2 = tournamentSelection(parents);
 

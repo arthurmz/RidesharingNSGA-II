@@ -70,6 +70,7 @@ typedef struct Individuo{
 	int dominates_list_count;//número de soluções dominadas por ind
 	int rank;//Qual front este indivíduo está
 	double crowding_distance;
+	int id;
 }Individuo;
 
 /*Os indivíduos são armazenados no heap pra
@@ -112,7 +113,7 @@ void fast_nondominated_sort(Population *population, Fronts * fronts);
 void crowding_distance_assignment(Population *pop);
 bool crowded_comparison_operator(Individuo *a, Individuo *b);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato);
-void insere_carona_aleatoria_rota(Graph *g, Rota* rota);
+void insere_carona_aleatoria_rota(Rota* rota);
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao, int offset);
 void clean_riders_matches(Graph *g);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
