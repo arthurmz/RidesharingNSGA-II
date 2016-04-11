@@ -88,7 +88,6 @@ Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
  * até conseguir fazer match de N caronas. Se até o fim não conseguiu, aleatoriza e segue pro próximo rider*/
 Population *generate_random_population(int size, Graph *g, bool insereCaronasAleatorias){
 	Population *p = (Population*) new_empty_population(size);
-
 	for (int i = 0; i < size; i++){//Pra cada um dos indivíduos idv
 		shuffle(index_array_drivers,g->drivers);
 		Individuo *idv = generate_random_individuo(g, insereCaronasAleatorias);
@@ -106,10 +105,6 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
 		rotaDestino->length = rotaOrigem->length;
 		for (int j = 0; j < rotaOrigem->length; j++){
 			rotaDestino->list[j] = rotaOrigem->list[j];
-			//rotaDestino->list[j].r = rotaOrigem->list[j].r;
-			//rotaDestino->list[j].is_source = rotaOrigem->list[j].is_source;
-			//rotaDestino->list[j].service_time = rotaOrigem->list[j].service_time;
-			//destiny->cromossomo[i].list[j].waiting_time = rota->list[j].waiting_time;
 		}
 	}
 
@@ -119,7 +114,13 @@ void copy_rota(Individuo * origin, Individuo * destiny, int start, int end){
  * Para manter intacta a original, em caso da rota
  * clonada não servir*/
 void clone_rota(Rota * rota, Rota *cloneRota){
+	if (rota == cloneRota) {
+		printf("bug\n");
+		return;
+	}
+
 	cloneRota->id = rota->id;
+	cloneRota->capacity = rota->capacity;
 	cloneRota->length = rota->length;
 	for (int i = 0; i < rota->length; i++){
 		cloneRota->list[i] = rota->list[i];
@@ -162,10 +163,17 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 		g->request_list[i].matchable_riders = 0;
 		if (i < drivers)
 			g->request_list[i].matchable_riders_list = calloc(riders, sizeof(Request*));
+		else
+			g->request_list[i].matchable_riders_list = NULL;
 	}
 	return g;
 }
 
+/** Obtem a instância do problema do arquivo e preenche no "Grafo" em memória
+ * Observar que os tempos de delivery no txt não estão corretos,
+ * já que o tempo computado originalmente no artigo é sempre o ceil do tempo real
+ * (que por sua vez é determinado pela distância de haversine).
+ */
 Graph * parse_file(char *filename){
 	FILE *fp=fopen(filename, "r");
 
