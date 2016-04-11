@@ -9,7 +9,7 @@
 #include <math.h>
 
 double distancia_percorrida(Rota * rota){
-	double accDistance =0;
+	double accDistance = 0;
 	for (int i = 0; i < rota->length -1; i++){
 		Service *a = &rota->list[i];
 		Service *b = &rota->list[i+1];
@@ -57,7 +57,7 @@ double haversine(Service *a, Service *b){
 }
 
 /*Tempo em minutos*/
-double time_between_services(Service *a, Service *b){
+double minimal_time_between_services(Service *a, Service *b){
 	double distance = haversine(a, b);
 	return distance / VEHICLE_SPEED * 60;
 }
@@ -65,18 +65,20 @@ double time_between_services(Service *a, Service *b){
 /*Calcula o tempo gasto para ir do ponto i ao ponto j, através de cada
  * request da rota.*/
 double tempo_gasto_rota(Rota *rota, int i, int j){
+	return rota->list[j].service_time - rota->list[i].service_time;
+/*
 	double accTime =0;
 	for (int k = i; k < j; k++){
 		Service *a = &rota->list[k];
 		Service *b = &rota->list[k+1];
-		accTime += time_between_services(a,b);
+		accTime += minimal_time_between_services(a,b);
 	}
-	return accTime;
+	return accTime;*/
 }
 
 /**Calcula o service_time mais cedo possível para actual. Baseado
  * no service_time de ant */
-double calculate_time_at(Service * actual, Service *ant){
+double calculate_service_time(Service * actual, Service *ant){
 	double next_time = 0;
 
 	double st;
@@ -87,7 +89,7 @@ double calculate_time_at(Service * actual, Service *ant){
 
 	double at = get_earliest_time_service(actual);
 
-	next_time = ant->service_time + st + time_between_services(ant, actual);
+	next_time = ant->service_time + st + minimal_time_between_services(ant, actual);
 	next_time = fmax(next_time, at);
 
 	return next_time;
@@ -156,7 +158,7 @@ bool is_distancia_motorista_respeitada(Rota * rota){
 bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
-	double MTT = AT + BT * time_between_services(source, destiny);
+	double MTT = AT + BT * minimal_time_between_services(source, destiny);
 	double accTime = tempo_gasto_rota(rota, i, j);
 	return accTime <= MTT;
 }

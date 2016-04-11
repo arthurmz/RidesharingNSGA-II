@@ -127,18 +127,6 @@ void clone_rota(Rota * rota, Rota *cloneRota){
 	}
 }
 
-void complete_free_individuo(Individuo * idv){
-	if (idv != NULL){
-		for (int i = 0; i < idv->size; i++){
-			if (idv->cromossomo != NULL && idv->cromossomo[i].list != NULL)
-				free(idv->cromossomo[i].list);
-		}
-		if (idv->cromossomo != NULL)
-			free(idv->cromossomo);
-		free(idv);
-	}
-}
-
 /*Aloca uma nova população de tamanho max_capacity
  * Cada elemento de list é um ponteiro pra indivíduo NÃO ALOCADO*/
 Population* new_empty_population(int max_capacity){

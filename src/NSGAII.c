@@ -323,7 +323,7 @@ bool update_times(Rota *rota){
 		double at = get_earliest_time_service(atual);
 		double bt = get_latest_time_service(atual);
 
-		double tbs = time_between_services(atual, prox);
+		double tbs = minimal_time_between_services(atual, prox);
 
 		atual->service_time = prox->service_time - tbs;
 
@@ -386,7 +386,7 @@ void minimize_waiting_time(Rota * rota){
 		Service *actual = &rota->list[i+1];
 
 
-		actual->service_time = calculate_time_at(actual, ant);
+		actual->service_time = calculate_service_time(actual, ant);
 	}
 }
 
