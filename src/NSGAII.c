@@ -682,16 +682,18 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 	}
 }
 
-/*Remove todas as caronas que quebram a validação
- * Tenta inserir novas
- * Utiliza graph pra saber quem já fez match.
- * */
+
+/**
+ * Repara o indivíduo, retirando todas as caronas repetidas.
+ * No fim, as caronas com match são registradas no grafo
+ */
 void repair(Individuo *offspring, Graph *g){
 	clean_riders_matches(g);
 	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
 		Rota *rota = &offspring->cromossomo[i];
 
-		for (int j = 0; j < rota->length; j++){//pra cada um dos services SOURCES na rota
+		//pra cada um dos services SOURCES na rota
+		for (int j = 1; j < rota->length-1; j++){
 			//Se é matched então algum SOURCE anterior já usou esse request
 			//Então deve desfazer a rota de j até o offset
 			if ((rota->list[j].is_source && rota->list[j].r->matched)){
@@ -703,7 +705,7 @@ void repair(Individuo *offspring, Graph *g){
 				}
 				desfaz_insercao_carona_rota(rota, j, offset);
 			}
-			else if (!rota->list[j].r->driver){
+			else if (rota->list[j].is_source){
 				rota->list[j].r->matched = true;
 				rota->list[j].r->id_rota_match = rota->id;
 			}
