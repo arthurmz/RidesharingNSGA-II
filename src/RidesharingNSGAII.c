@@ -107,6 +107,10 @@ int main(int argc,  char** argv){
     printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
     printf("Seed: %u\n", seed);
 
+    if(!verifica_populacao(frontsList->list[0])){
+		printf("ERRO!");
+	}
+
 	print_to_file_decision_space(frontsList->list[0],g,seed);
 
 	dealoc_full_population(parents);
