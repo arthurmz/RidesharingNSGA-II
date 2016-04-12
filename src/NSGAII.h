@@ -127,7 +127,7 @@ int compare_rotas(const void *p, const void *q);
 void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
 void merge(Population *p1, Population *p2, Population *big_population);
 void complete_free_individuo(Individuo * idv);
-void repair(Individuo *offspring, Graph *g, int position);
+void repair(Individuo *offspring, Graph *g);
 void mutation(Individuo *ind, Graph *g, double mutationProbability);
 
 
