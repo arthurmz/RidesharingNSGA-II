@@ -13,14 +13,68 @@
 #include "NSGAII.h"
 #include "Calculations.h"
 
-
+/** Rota usada para a cópia em operações de mutação etc.*/
 Rota *ROTA_CLONE;
 
+/** Aloca a ROTA_CLONE global */
 void malloc_rota_clone(){
 	/*Criando uma rota para cópia e validação das rotas*/
 	ROTA_CLONE = (Rota*) calloc(1, sizeof(Rota));
 	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 }
+
+
+/*Deve ser chamado depois de determinar as funções objetivo*/
+void crowding_distance_assignment(Population *pop){
+	for (int i = 0; i < pop->size; i++){
+		pop->list[i]->crowding_distance = 0;
+	}
+	for (int k = 0; k < QTD_OBJECTIVES; k++){
+
+		sort_by_objective(pop, k);
+
+		pop->list[0]->crowding_distance = FLT_MAX;
+		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
+
+		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
+		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
+
+		double diff = fmax(0.0001, obj_max - obj_min);
+
+		for (int z = 1; z < pop->size -1; z++){
+			double prox_obj = pop->list[z+1]->objetivos[k];
+			double ant_obj = pop->list[z-1]->objetivos[k];
+
+			if (pop->list[z]->crowding_distance != FLT_MAX)
+				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
+		}
+
+	}
+}
+
+/*Pra poder usar a função qsort com N objetivos,
+ * precisamos implementar os n algoritmos de compare*/
+int compareByCrowdingDistanceMax(const void *p, const void *q) {
+    int ret;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
+    if (x->crowding_distance == y->crowding_distance)
+        ret = 0;
+    else if (x->crowding_distance > y->crowding_distance)
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
+
+void sort_by_crowding_distance_assignment(Population *front){
+	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
+}
+
+bool crowded_comparison_operator(Individuo *a, Individuo *b){
+	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
+}
+
 
 /*Adiciona o indivíduo de rank k no front k de FRONTS
  * Atualiza o size de FRONTS caso o rank seja maior*/
@@ -207,190 +261,6 @@ void sort_by_objective(Population *pop, int obj){
 }
 
 
-/*Deve ser chamado depois de determinar as funções objetivo*/
-void crowding_distance_assignment(Population *pop){
-	for (int i = 0; i < pop->size; i++){
-		pop->list[i]->crowding_distance = 0;
-	}
-	for (int k = 0; k < QTD_OBJECTIVES; k++){
-
-		sort_by_objective(pop, k);
-
-		pop->list[0]->crowding_distance = FLT_MAX;
-		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
-
-		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
-		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
-
-		double diff = fmax(0.0001, obj_max - obj_min);
-
-		for (int z = 1; z < pop->size -1; z++){
-			double prox_obj = pop->list[z+1]->objetivos[k];
-			double ant_obj = pop->list[z-1]->objetivos[k];
-
-			if (pop->list[z]->crowding_distance != FLT_MAX)
-				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
-		}
-
-	}
-}
-
-/*Pra poder usar a função qsort com N objetivos,
- * precisamos implementar os n algoritmos de compare*/
-int compareByCrowdingDistanceMax(const void *p, const void *q) {
-    int ret;
-    Individuo * x = *(Individuo **)p;
-    Individuo * y = *(Individuo **)q;
-    if (x->crowding_distance == y->crowding_distance)
-        ret = 0;
-    else if (x->crowding_distance > y->crowding_distance)
-        ret = -1;
-    else
-        ret = 1;
-    return ret;
-}
-
-
-
-void sort_by_crowding_distance_assignment(Population *front){
-	//crowding_distance_assignment(front); //jah eh feito antes
-	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
-}
-
-bool crowded_comparison_operator(Individuo *a, Individuo *b){
-	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
-}
-
-
-
-/*Tenta empurar os services uma certa quantidade de tempo*/
-bool push_forward(Rota * rota, int position, double pf){
-	for (int i = position; i < rota->length; i++){
-		if (pf == 0) return true;
-		Service * svc = &rota->list[i];
-		Service * ant = &rota->list[i-1];
-		double at = get_earliest_time_service(svc);
-		double bt = get_latest_time_service(svc);
-
-		double waiting_time = svc->service_time - ant->service_time - haversine(ant, svc);
-		if (waiting_time > 0)
-			pf -= waiting_time;
-		if (pf < 0)
-			pf = 0;
-		double new_st = rota->list[i].service_time + pf;
-		if (new_st < at || new_st > bt)
-			return false;
-	}
-	return true;
-}
-
-
-
-/*
- *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
- *Ao mesmo tempo, se identificar uma situação onde não dá pra inserir, retorna false
- *
- *coloca o servicetime do delivery do motorista como o mais cedo
- *percorre a rota do fim pro início, setando o servicetime
- *st_i = st_i+1 - tempo(i, i+1);
- *se st_i < earliest_time
- *	push_forward(i+1);
- *se st_i > latest_time
- *	st_i = latest_time;
- *
- *Faz isso pra todo mundo, depois minimiza o tempo de espera.
- *
- * */
-bool update_times(Rota *rota){
-	Service * motoristaDelivery = &rota->list[rota->length-1];
-
-	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
-
-	/**
-	 * Calcula o service_time de i =
-	 * service_time_i = service_time_i+1 - tempo(i, i+1)
-	 *
-	 * se o service_time_i < at então service_time_i = at;
-	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
-	 * Isso é feito depois.
-	 *
-	 * Se o service_time_i > bt, service_time_i = bt, e agora
-	 * service_time_i+1 ganha um waiting_time;
-	 */
-	for (int i = rota->length-2; i >= 0; i--){
-		Service *atual = &rota->list[i];
-		Service *prox = &rota->list[i+1];
-		double at = get_earliest_time_service(atual);
-		double bt = get_latest_time_service(atual);
-
-		double tbs = minimal_time_between_services(atual, prox);
-
-		atual->service_time = prox->service_time - tbs;
-
-		if (atual->service_time > bt){
-			atual->service_time = bt;
-		}
-		else if (atual->service_time < at){
-			double pf = at - atual->service_time;
-			atual->service_time = at;
-			bool conseguiu = push_forward(rota, i+1, pf);
-			if (!conseguiu)
-				return false;
-		}
-	}
-
-	/**Empurra os service_times entre services que se aproximaram
-	 * por causa do calculo anterior
-	 */
-	/*
-	for (int i = 0; i < rota->length-1; i++){
-		Service * atual = &rota->list[i];
-		Service * next = &rota->list[i+1];
-		double bt = get_latest_time_service(next);
-
-		double tbs = time_between_services(atual, next);
-
-		if (next->service_time < atual->service_time + tbs)
-			next->service_time = atual->service_time + tbs;
-
-		if (next->service_time > bt)
-			return false;
-	}
-	*/
-	return true;
-}
-
-/*
- * Atualiza os tempos de inserção, minimizando os tempos de espera
- * aumentando as chances da rota ser válida.
- *
- * o waiting_time é minimizado fazendo um push_foward dos elementos que
- * estão ANTES do ponto onde há waiting_time;
- *
- * idéia:
- * percorre sequencialmente enquanto não acha um waiting_time >0
- * > vai atualizando o máximo de push_foward no ponto anterior
- * > quando achar waiting time > 0
- * >> faz service_time = max do push forward possível.
- *
- * Ex:
- *
- * A+ 1+ 1- 3+ 3- 2+ 2+ A-
- *
- * Depois de inserir o 3+ no earliest time
- *
- */
-void minimize_waiting_time(Rota * rota){
-	for (int i = 0; i < rota->length-1; i++){
-		Service *ant = &rota->list[i];
-		Service *actual = &rota->list[i+1];
-
-
-		actual->service_time = calculate_service_time(actual, ant);
-	}
-}
-
-
 /*
  * A0101B = tamanho 6
  * 			de 0 a 5
@@ -403,12 +273,12 @@ void minimize_waiting_time(Rota * rota){
  * 	inserir_de_fato - Se deve inserir mesmo ou é apenas um teste
  * */
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
-	if (posicao_insercao <= 0 || offset <= 0) return false;
+	if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
+		printf("Parâmetros inválidos\n");
+		return false;
+	}
 
 	clone_rota(rota, ROTA_CLONE);
-
-	//if (!is_insercao_rota_valida_jt(anterior, proximo, carona, &pickup_result, &delivery_result))
-		//return false;
 
 	int ultimaPos = ROTA_CLONE->length-1;
 	//Empurra todo mundo depois da posição de inserção
@@ -417,7 +287,6 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
 		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
 		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
-		//ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
@@ -425,7 +294,6 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
 		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
 		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
-		//ROTA_CLONE->list[i+1].waiting_time = ROTA_CLONE->list[i].waiting_time;
 	}
 
 	//Insere o conteúdo do novo carona
@@ -439,9 +307,15 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 
 	ROTA_CLONE->length += 2;
 
+	//Aumentar a capacidade se tiver chegando no limite
 	if (ROTA_CLONE->length == ROTA_CLONE->capacity - 4){
 		ROTA_CLONE->capacity += MAX_SERVICES_MALLOC_ROUTE;
 		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
+	}
+	//Aumentar a capacidade se tiver chegando no limite
+	if (rota->length == rota->capacity - 4){
+		rota->capacity += MAX_SERVICES_MALLOC_ROUTE;
+		rota->list = realloc(rota->list, rota->capacity * sizeof(Service));
 	}
 
 	bool rotaValida = update_times(ROTA_CLONE);
@@ -456,19 +330,13 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	}
 
 	return rotaValida;
-
-//	if (!rotaValida){
-//		desfaz_insercao_carona_rota(ROTA_CLONE, posicao_insercao, offset);
-//		carona->matched = false;
-//		update_times(ROTA_CLONE);
-//		return false;
-//	}
-//	clone_rota(ROTA_CLONE, rota);
-//	return true;
 }
 
 void desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao, int offset){
-	if (posicao_remocao <= 0 || offset <= 0) return;
+	if (posicao_remocao > rota->length-2 || posicao_remocao <= 0 || offset <= 0 || rota->length < 4 || !rota->list[posicao_remocao].is_source) {
+		printf("Erro ao desfazer a inserção\n");
+		return;
+	}
 
 	for (int i = posicao_remocao; i < rota->length-1; i++){
 		rota->list[i] = rota->list[i+1];
@@ -767,8 +635,136 @@ void transfer_rider(Individuo * ind, Graph * g){
 	}
 }
 
+/*
+ *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
+ *Ao mesmo tempo, se identificar uma situação onde não dá pra inserir, retorna false
+ *
+ *coloca o servicetime do delivery do motorista como o mais cedo
+ *percorre a rota do fim pro início, setando o servicetime
+ *st_i = st_i+1 - tempo(i, i+1);
+ *se st_i < earliest_time
+ *	push_forward(i+1);
+ *se st_i > latest_time
+ *	st_i = latest_time;
+ *
+ *Faz isso pra todo mundo, depois minimiza o tempo de espera.
+ *
+ * */
+bool update_times(Rota *rota){
+	Service * motoristaDelivery = &rota->list[rota->length-1];
+
+	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
+
+	/**
+	 * Calcula o service_time de i =
+	 * service_time_i = service_time_i+1 - tempo(i, i+1)
+	 *
+	 * se o service_time_i < at então service_time_i = at;
+	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
+	 * Isso é feito depois.
+	 *
+	 * Se o service_time_i > bt, service_time_i = bt, e agora
+	 * service_time_i+1 ganha um waiting_time;
+	 */
+	for (int i = rota->length-2; i >= 0; i--){
+		Service *atual = &rota->list[i];
+		Service *prox = &rota->list[i+1];
+		double at = get_earliest_time_service(atual);
+		double bt = get_latest_time_service(atual);
+
+		double tbs = minimal_time_between_services(atual, prox);
+
+		atual->service_time = prox->service_time - tbs;
+
+		if (atual->service_time > bt){
+			atual->service_time = bt;
+		}
+		else if (atual->service_time < at){
+			double pf = at - atual->service_time;
+			atual->service_time = at;
+			bool conseguiu = push_forward(rota, i+1, pf);
+			if (!conseguiu)
+				return false;
+		}
+	}
+
+	/**Empurra os service_times entre services que se aproximaram
+	 * por causa do calculo anterior
+	 */
+	/*
+	for (int i = 0; i < rota->length-1; i++){
+		Service * atual = &rota->list[i];
+		Service * next = &rota->list[i+1];
+		double bt = get_latest_time_service(next);
+
+		double tbs = time_between_services(atual, next);
+
+		if (next->service_time < atual->service_time + tbs)
+			next->service_time = atual->service_time + tbs;
+
+		if (next->service_time > bt)
+			return false;
+	}
+	*/
+	return true;
+}
+
+/*
+ * Atualiza os tempos de inserção, minimizando os tempos de espera
+ * aumentando as chances da rota ser válida.
+ *
+ * o waiting_time é minimizado fazendo um push_foward dos elementos que
+ * estão ANTES do ponto onde há waiting_time;
+ *
+ * idéia:
+ * percorre sequencialmente enquanto não acha um waiting_time >0
+ * > vai atualizando o máximo de push_foward no ponto anterior
+ * > quando achar waiting time > 0
+ * >> faz service_time = max do push forward possível.
+ *
+ * Ex:
+ *
+ * A+ 1+ 1- 3+ 3- 2+ 2+ A-
+ *
+ * Depois de inserir o 3+ no earliest time
+ *
+ */
+void minimize_waiting_time(Rota * rota){
+	for (int i = 0; i < rota->length-1; i++){
+		Service *ant = &rota->list[i];
+		Service *actual = &rota->list[i+1];
+		actual->service_time = calculate_service_time(actual, ant);
+	}
+}
+
+/*Tenta empurar os services uma certa quantidade de tempo*/
+bool push_forward(Rota * rota, int position, double pf){
+	for (int i = position; i < rota->length; i++){
+		if (pf == 0) return true;
+		Service * svc = &rota->list[i];
+		Service * ant = &rota->list[i-1];
+		double at = get_earliest_time_service(svc);
+		double bt = get_latest_time_service(svc);
+
+		double waiting_time = svc->service_time - ant->service_time - haversine(ant, svc);
+		if (waiting_time > 0)
+			pf -= waiting_time;
+		if (pf < 0)
+			pf = 0;
+		double new_st = rota->list[i].service_time + pf;
+		if (new_st < at || new_st > bt)
+			return false;
+	}
+	return true;
+}
+
+
+
+
+
 /** 1a mutação: remover o carona de uma rota e inserir em um motorista onde só cabe um carona*/
 void mutation(Individuo *ind, Graph *g, double mutationProbability){
+	repair(ind, g);
 	double accept = (double)rand() / RAND_MAX;
 
 	if (accept < mutationProbability){
@@ -794,8 +790,8 @@ void crossover_and_mutation(Population *parents, Population *offspring,  Graph *
 
 		crossover(parent1, parent2, offspring1, offspring2, g, crossoverProbability);
 
-		mutation(offspring1, g, mutationProbability);
-		mutation(offspring2, g, mutationProbability);
+		//mutation(offspring1, g, mutationProbability);
+		//mutation(offspring2, g, mutationProbability);
 		offspring->size += 2;
 	}
 }

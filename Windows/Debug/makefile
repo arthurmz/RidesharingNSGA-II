@@ -35,7 +35,7 @@ RidesharingNSGAII.exe: $(OBJS) $(USER_OBJS)
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) RidesharingNSGAII.exe
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) RidesharingNSGAII.exe
 	-@echo ' '
 
 .PHONY: all clean dependents
