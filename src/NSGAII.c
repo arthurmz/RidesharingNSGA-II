@@ -283,17 +283,11 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	int ultimaPos = ROTA_CLONE->length-1;
 	//Empurra todo mundo depois da posição de inserção
 	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		ROTA_CLONE->list[i+1].is_source = ROTA_CLONE->list[i].is_source;
-		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
-		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
-		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
+		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
 	}
 	//Empurra todo mundo depois da posição do offset
 	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
-		ROTA_CLONE->list[i+1].is_source = ROTA_CLONE->list[i].is_source;
-		ROTA_CLONE->list[i+1].offset = ROTA_CLONE->list[i].offset;
-		ROTA_CLONE->list[i+1].r = ROTA_CLONE->list[i].r;
-		ROTA_CLONE->list[i+1].service_time = ROTA_CLONE->list[i].service_time;
+		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
 	}
 
 	//Insere o conteúdo do novo carona
@@ -332,10 +326,22 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	return rotaValida;
 }
 
-void desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao, int offset){
-	if (posicao_remocao > rota->length-2 || posicao_remocao <= 0 || offset <= 0 || rota->length < 4 || !rota->list[posicao_remocao].is_source) {
+
+/** Remove o carona que tem source na posicção Posicao_remocao
+ * Retorna o valor do offset para encontrar o destino do carona removido
+ * Retorna 0 caso não seja possível fazer a remoção do carona
+ */
+int desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao){
+	if (posicao_remocao > rota->length-2 || posicao_remocao <= 0 || rota->length < 4 || !rota->list[posicao_remocao].is_source) {
 		printf("Erro ao desfazer a inserção\n");
-		return;
+		return 0;
+	}
+	
+	int offset = 1;
+	for (int k = posicao_remocao+1; k < rota->length; k++){//encontrando o offset
+		if (rota->list[posicao_remocao].r == rota->list[k].r && !rota->list[k].is_source)
+			break;
+		offset++;
 	}
 
 	for (int i = posicao_remocao; i < rota->length-1; i++){
@@ -347,6 +353,8 @@ void desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao, int offset){
 		rota->list[i] = rota->list[i+1];
 	}
 	rota->length--;
+
+	return offset;
 }
 
 /*Remove a marcação de matched dos riders*/
@@ -420,10 +428,12 @@ void insere_carona_aleatoria_rota(Rota* rota){
 	for (int z = 0; z < qtd_caronas_inserir; z++){
 		int p = index_array_caronas_inserir[z];
 		Request * carona = request->matchable_riders_list[p];
-		int posicao_inicial = get_random_int(1, rota->length-1);
-		int offset = 1;//TODO, variar o offset
-		if (!carona->matched)
-			insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+		if (!carona->matched){
+			int posicao_inicial = get_random_int(1, rota->length-1);
+			int offset = get_random_int(1, rota->length - posicao_inicial);
+			bool inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+			if(inseriu) break;
+		}
 	}
 }
 
@@ -559,21 +569,16 @@ void repair(Individuo *offspring, Graph *g){
 	clean_riders_matches(g);
 	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
 		Rota *rota = &offspring->cromossomo[i];
-
+		
+		
 		//pra cada um dos services SOURCES na rota
 		for (int j = 1; j < rota->length-1; j++){
 			//Se é matched então algum SOURCE anterior já usou esse request
 			//Então deve desfazer a rota de j até o offset
 			if ((rota->list[j].is_source && rota->list[j].r->matched)){
-				int offset = 1;
-				for (int k = j+1; k < rota->length; k++){//encontrando o offset
-					if (rota->list[j].r == rota->list[k].r && !rota->list[k].is_source)
-						break;
-					offset++;
-				}
-				desfaz_insercao_carona_rota(rota, j, offset);
+				desfaz_insercao_carona_rota(rota, j);//Diminui length em duas unidades
 			}
-			else if (rota->list[j].is_source){
+			else if (rota->list[j].is_source){//Somente "senão", pois o tamanho poderia ter diminuido aí em cima.
 				rota->list[j].r->matched = true;
 				rota->list[j].r->id_rota_match = rota->id;
 			}
@@ -623,13 +628,7 @@ void transfer_rider(Individuo * ind, Graph * g){
 				if ( rotaRemover->list[position].r == caronaInserir )
 					break;
 			}
-			int offset = 1;
-			for (int k = position+1; k < rotaRemover->length; k++){//encontrando o offset
-				if (rotaRemover->list[position].r == rotaRemover->list[k].r && !rotaRemover->list[k].is_source)
-					break;
-				offset++;
-			}
-			desfaz_insercao_carona_rota(rotaRemover,position,offset);
+			desfaz_insercao_carona_rota(rotaRemover,position);
 		}
 		caronaInserir->matched = true;
 	}
@@ -649,6 +648,9 @@ void transfer_rider(Individuo * ind, Graph * g){
  *
  *Faz isso pra todo mundo, depois minimiza o tempo de espera.
  *
+ *Update: Considerar que se uma rota é temporariamente válida
+ *ao inserir a origem e destino. ela também vai ser válida ao inserir
+ *apenas a origem!
  * */
 bool update_times(Rota *rota){
 	Service * motoristaDelivery = &rota->list[rota->length-1];
