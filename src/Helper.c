@@ -370,6 +370,7 @@ bool verifica_populacao(Population *p){
 						}
 						if (contem){
 							printf("Erro na rota %d, carona duplicada\n", q);
+							return false;
 						}
 						else{
 							rqts[index++] = srv->r;

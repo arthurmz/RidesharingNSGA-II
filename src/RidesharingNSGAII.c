@@ -70,8 +70,8 @@ int main(int argc,  char** argv){
 	Population *big_population = (Population*) new_empty_population(POPULATION_SIZE*2);
 	Fronts *frontsList = new_front_list(POPULATION_SIZE * 2);
 	
-	Population * parents = generate_random_population(POPULATION_SIZE, g, false);
-	Population * children = generate_random_population(POPULATION_SIZE, g, false);
+	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
+	Population * children = generate_random_population(POPULATION_SIZE, g, true);
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;

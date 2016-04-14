@@ -130,6 +130,7 @@ void complete_free_individuo(Individuo * idv);
 void repair(Individuo *offspring, Graph *g);
 void mutation(Individuo *ind, Graph *g, double mutationProbability);
 bool push_forward(Rota * rota, int position, double pf);
+void insere_carona_aleatoria_individuo(Individuo * ind);
 
 
 int * index_array_drivers;
