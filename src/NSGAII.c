@@ -577,6 +577,7 @@ void repair(Individuo *offspring, Graph *g){
 			//Então deve desfazer a rota de j até o offset
 			if ((rota->list[j].is_source && rota->list[j].r->matched)){
 				desfaz_insercao_carona_rota(rota, j);//Diminui length em duas unidades
+				j--;
 			}
 			else if (rota->list[j].is_source){//Somente "senão", pois o tamanho poderia ter diminuido aí em cima.
 				rota->list[j].r->matched = true;
