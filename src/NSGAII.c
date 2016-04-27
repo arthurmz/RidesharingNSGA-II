@@ -23,58 +23,452 @@ void malloc_rota_clone(){
 	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 }
 
-
-/*Deve ser chamado depois de determinar as funções objetivo*/
-void crowding_distance_assignment(Population *pop){
-	for (int i = 0; i < pop->size; i++){
-		pop->list[i]->crowding_distance = 0;
-	}
-	for (int k = 0; k < QTD_OBJECTIVES; k++){
-
-		sort_by_objective(pop, k);
-
-		pop->list[0]->crowding_distance = FLT_MAX;
-		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
-
-		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
-		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
-
-		double diff = fmax(0.0001, obj_max - obj_min);
-
-		for (int z = 1; z < pop->size -1; z++){
-			double prox_obj = pop->list[z+1]->objetivos[k];
-			double ant_obj = pop->list[z-1]->objetivos[k];
-
-			if (pop->list[z]->crowding_distance != FLT_MAX)
-				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
-		}
-
+/**
+ * Insere caronas aleatórias para todas as caronas da rota
+ * IMPORTANTE: Antes de chamar, todos os caronas já feito match devem estar no grafo
+ */
+void insere_carona_aleatoria_individuo(Individuo * ind){
+	shuffle(index_array_drivers,g->drivers);
+	for (int i = 0; i < ind->size; i++){
+		int j = index_array_drivers[i];
+		insere_carona_aleatoria_rota(&ind->cromossomo[j]);
 	}
 }
 
+
+/*
+ * A0101B = tamanho 6
+ * 			de 0 a 5
+ * 	Inserir na posiçao 0 não pode pq já tem o motorista
+ * 	Inserir na posição 1, empurra os demais pra frente
+ * 	Inserir o destino é contado à partir da origem (offset)
+ * 	offset = 0 não pode pq é o proprio origem, 1 pode e é o próximo,
+ * 	2 é o que pula um e insere.
+ *
+ * 	inserir_de_fato - Se deve inserir mesmo ou é apenas um teste
+ * */
+bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
+	if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
+		printf("Parâmetros inválidos\n");
+		return false;
+	}
+
+	clone_rota(rota, ROTA_CLONE);
+
+	int ultimaPos = ROTA_CLONE->length-1;
+	//Empurra todo mundo depois da posição de inserção
+	for (int i = ultimaPos; i >= posicao_insercao; i--){
+		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
+	}
+	//Empurra todo mundo depois da posição do offset
+	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
+		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
+	}
+
+	//Insere o conteúdo do novo carona
+	ROTA_CLONE->list[posicao_insercao].r = carona;
+	ROTA_CLONE->list[posicao_insercao].is_source = true;
+	//ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
+	//Insere o conteúdo do destino do carona
+	ROTA_CLONE->list[posicao_insercao+offset].r = carona;
+	ROTA_CLONE->list[posicao_insercao+offset].is_source = false;
+	//ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
+
+	ROTA_CLONE->length += 2;
+
+	//Aumentar a capacidade se tiver chegando no limite
+	if (ROTA_CLONE->length == ROTA_CLONE->capacity - 4){
+		ROTA_CLONE->capacity += MAX_SERVICES_MALLOC_ROUTE;
+		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
+	}
+	//Aumentar a capacidade se tiver chegando no limite
+	if (rota->length == rota->capacity - 4){
+		rota->capacity += MAX_SERVICES_MALLOC_ROUTE;
+		rota->list = realloc(rota->list, rota->capacity * sizeof(Service));
+	}
+
+	bool rotaValida = update_times(ROTA_CLONE);
+
+	if (rotaValida)
+		rotaValida = is_rota_valida(ROTA_CLONE);
+
+	if (rotaValida && inserir_de_fato){
+		carona->matched = true;
+		carona->id_rota_match = ROTA_CLONE->id;
+		clone_rota(ROTA_CLONE, rota);
+	}
+
+	return rotaValida;
+}
+
+/*Insere uma quantidade variável de caronas na rota informada
+ * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
+void insere_carona_aleatoria_rota(Rota* rota){
+	Request * request = &g->request_list[rota->id];
+
+	int qtd_caronas_inserir = request->matchable_riders;
+	if (qtd_caronas_inserir == 0) return;
+	/*Configurando o index_array usado na aleatorização
+	 * da ordem de leitura dos caronas
+	 * Precisa fazer por causa do tamanho variável*/
+	for (int l = 0; l < qtd_caronas_inserir; l++){
+		index_array_caronas_inserir[l] = l;
+	}
+
+	shuffle(index_array_caronas_inserir, qtd_caronas_inserir);
+
+	for (int z = 0; z < qtd_caronas_inserir; z++){
+		int p = index_array_caronas_inserir[z];
+		Request * carona = request->matchable_riders_list[p];
+		if (!carona->matched){
+			int posicao_inicial = get_random_int(1, rota->length-1);
+			int offset = get_random_int(1, rota->length - posicao_inicial);
+			bool inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+			if(inseriu) break;
+		}
+	}
+}
+
+
+/** Remove o carona que tem source na posicção Posicao_remocao
+ * Retorna o valor do offset para encontrar o destino do carona removido
+ * Retorna 0 caso não seja possível fazer a remoção do carona
+ */
+int desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao){
+	if (posicao_remocao > rota->length-2 || posicao_remocao <= 0 || rota->length < 4 || !rota->list[posicao_remocao].is_source) {
+		printf("Erro ao desfazer a inserção\n");
+		return 0;
+	}
+	
+	int offset = 1;
+	for (int k = posicao_remocao+1; k < rota->length; k++){//encontrando o offset
+		if (rota->list[posicao_remocao].r == rota->list[k].r && !rota->list[k].is_source)
+			break;
+		offset++;
+	}
+
+	for (int i = posicao_remocao; i < rota->length-1; i++){
+		rota->list[i] = rota->list[i+1];
+	}
+	rota->length--;
+
+	for (int i = posicao_remocao+offset-1; i < rota->length-1; i++){
+		rota->list[i] = rota->list[i+1];
+	}
+	rota->length--;
+
+	return offset;
+}
+
+/*Remove a marcação de matched dos riders*/
+void clean_riders_matches(Graph *g){
+	for (int i = g->drivers; i < g->total_requests; i++){
+		g->request_list[i].matched = false;
+	}
+}
+
+/**Avalia as funções objetivo de um indivíduo
+ * sem verificar o grafo
+ */
+void evaluate_objective_functions(Individuo *idv, Graph *g){
+	double distance = 0;
+	double vehicle_time = 0;
+	double rider_time = 0;
+	double riders_unmatched = g->riders;
+	for (int m = 0; m < idv->size; m++){//pra cada rota
+		Rota *rota = &idv->cromossomo[m];
+
+		vehicle_time += tempo_gasto_rota(rota, 0, rota->length-1);
+		distance += distancia_percorrida(rota);
+
+		for (int i = 1; i < rota->length-2; i++){//Pra cada um dos sources services
+			Service *service = &rota->list[i];
+			if (service->r->driver || !service->is_source)//só contabiliza os services source que não é o motorista
+				continue;
+			riders_unmatched--;
+			//Repete o for até encontrar o destino
+			//Ainda não considera o campo OFFSET contido no typedef SERVICE
+			for (int j = i+1; j < rota->length-1; j++){
+				Service *destiny = &rota->list[j];
+				if(destiny->is_source || service->r != destiny->r)
+					continue;
+
+				rider_time += tempo_gasto_rota(rota, i, j);
+				break;
+			}
+		}
+	}
+
+	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
+	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
+	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
+	idv->objetivos[RIDERS_UNMATCHED] = riders_unmatched;
+
+}
+
+
+void evaluate_objective_functions_pop(Population* p, Graph *g){
+	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
+		evaluate_objective_functions(p->list[i], g);
+	}
+}
+
+
+/*Ordena a população de acordo com o objetivo 0, 1, 2, 3*/
+void sort_by_objective(Population *pop, int obj){
+	switch(obj){
+		case 0:
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare0 );
+			break;
+		case 1:
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare1 );
+			break;
+		case 2:
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare2 );
+			break;
+		case 3:
+			qsort(pop->list, pop->size, sizeof(Individuo*), compare3 );
+			break;
+	}
+}
+
+
+int compare_rotas(const void *p, const void *q){
+	int ret;
+	Request * x = *(Request **)p;
+	Request * y = *(Request **)q;
+	if (x->matchable_riders == y->matchable_riders)
+		ret = 0;
+	else if (x->matchable_riders < y->matchable_riders)
+		ret = -1;
+	else
+		ret = 1;
+	return ret;
+}
+
+
+/*Tenta empurar os services uma certa quantidade de tempo*/
+bool push_forward(Rota * rota, int position, double pf){
+	for (int i = position; i < rota->length; i++){
+		if (pf == 0) return true;
+		Service * svc = &rota->list[i];
+		Service * ant = &rota->list[i-1];
+		double at = get_earliest_time_service(svc);
+		double bt = get_latest_time_service(svc);
+
+		double waiting_time = svc->service_time - ant->service_time - haversine(ant, svc);
+		if (waiting_time > 0)
+			pf -= waiting_time;
+		if (pf < 0)
+			pf = 0;
+		double new_st = rota->list[i].service_time + pf;
+		if (new_st < at || new_st > bt)
+			return false;
+	}
+	return true;
+}
+
+
+/** Transfere o carona de uma rota com possivelmente mais
+ * riders para outra com menos.
+ */
+void transfer_rider(Individuo * ind, Graph * g){
+	Rota * rotaInserir = NULL;
+	Rota * rotaRemover = NULL;
+	Request * caronaInserir;
+	Request * motoristaInserir;
+	bool ok = false;
+
+	for (int i = 0 ; i < g->drivers; i++){
+		int k = index_array_drivers[i];
+		rotaInserir = &ind->cromossomo[k];
+		motoristaInserir = &g->request_list[k];
+
+		if (rotaInserir->length/2 - 1 < motoristaInserir->matchable_riders){
+			for (int p =0; p < motoristaInserir->matchable_riders; p++){
+				Request * caronaTemp = motoristaInserir->matchable_riders_list[p];
+				Rota * rotaTemp = &ind->cromossomo[caronaTemp->id_rota_match];
+
+				if ( caronaTemp->matched && rotaTemp->id != rotaInserir->id && rotaInserir->length < rotaTemp->length){
+					caronaInserir = caronaTemp;
+					rotaRemover = rotaTemp;
+					ok = true;
+					break;
+				}
+			}
+			if (ok) break;
+		}
+	}
+
+	if (ok){
+		int posicao_inserir = 1 + (rand () % (rotaInserir->length-1));
+		caronaInserir->matched = false;
+		bool inseriu = insere_carona_rota(rotaInserir, caronaInserir, posicao_inserir, 1, true );
+
+		if (inseriu){
+			int position = 0;
+			for (int position = 0; position < rotaRemover->length; position ++){
+				if ( rotaRemover->list[position].r == caronaInserir )
+					break;
+			}
+			desfaz_insercao_carona_rota(rotaRemover,position);
+		}
+		caronaInserir->matched = true;
+	}
+}
+
+/**
+ * Repara o indivíduo, retirando todas as caronas repetidas.
+ * No fim, as caronas com match são registradas no grafo
+ */
+void repair(Individuo *offspring, Graph *g){
+	clean_riders_matches(g);
+	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
+		Rota *rota = &offspring->cromossomo[i];
+
+		//pra cada um dos services SOURCES na rota
+		for (int j = 1; j < rota->length-1; j++){
+			//Se é matched então algum SOURCE anterior já usou esse request
+			//Então deve desfazer a rota de j até o offset
+			if (rota->list[j].is_source && rota->list[j].r->matched){
+				desfaz_insercao_carona_rota(rota, j);//Diminui length em duas unidades
+				j--;
+			}
+			else if (rota->list[j].is_source){//Somente "senão", pois o tamanho poderia ter diminuido aí em cima.
+				rota->list[j].r->matched = true;
+				rota->list[j].r->id_rota_match = rota->id;
+			}
+		}
+	}
+}
+
+
+void mutation(Individuo *ind, Graph *g, double mutationProbability){
+	repair(ind, g);
+	double accept = (double)rand() / RAND_MAX;
+
+	if (accept < mutationProbability){
+		int mutation_array[5];
+		fill_array(mutation_array, 5);
+		shuffle(mutation_array, 5);
+		transfer_rider(ind, g);
+	}
+}
+
+
+void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability){
+	int rotaSize = g->drivers;
+	offspring1->size = rotaSize;
+	offspring2->size = rotaSize;
+
+	int crossoverPoint = get_random_int(1, rotaSize-2);
+	double accept = (double)rand() / RAND_MAX;
+
+	if (accept < crossoverProbability){
+
+		copy_rota(parent2, offspring1, 0, crossoverPoint);
+		copy_rota(parent1, offspring1, crossoverPoint, rotaSize);
+		copy_rota(parent1, offspring2, 0, crossoverPoint);
+		copy_rota(parent2, offspring2, crossoverPoint, rotaSize);
+
+		repair(offspring1, g);
+		insere_carona_aleatoria_individuo(offspring1);
+		repair(offspring2, g);
+		insere_carona_aleatoria_individuo(offspring2);
+	}
+	else{
+		copy_rota(parent1, offspring1, 0, rotaSize);
+		copy_rota(parent2, offspring2, 0, rotaSize);
+	}
+}
+
+
+/*Gera uma população de filhos, usando seleção, crossover e mutação*/
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability){
+	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
+	int i = 0;
+	while (offspring->size < parents->size){
+		Individuo *parent1 = tournamentSelection(parents);
+		Individuo *parent2 = tournamentSelection(parents);
+
+		Individuo *offspring1 = offspring->list[i++];
+		Individuo *offspring2 = offspring->list[i];
+
+		crossover(parent1, parent2, offspring1, offspring2, g, crossoverProbability);
+
+		mutation(offspring1, g, mutationProbability);
+		mutation(offspring2, g, mutationProbability);
+		offspring->size += 2;
+	}
+}
+
+
+/*seleção por torneio, k = 2*/
+Individuo * tournamentSelection(Population * parents){
+	Individuo * best = NULL;
+	for (int i = 0; i < 2; i++){
+		int pos = rand() % parents->size;
+		Individuo * outro = parents->list[pos];
+		if (best == NULL || crowded_comparison_operator(outro, best))
+			best = outro;
+	}
+	return best;
+}
+
+
 /*Pra poder usar a função qsort com N objetivos,
  * precisamos implementar os n algoritmos de compare*/
-int compareByCrowdingDistanceMax(const void *p, const void *q) {
+int compare0(const void *p, const void *q) {
     int ret;
     Individuo * x = *(Individuo **)p;
     Individuo * y = *(Individuo **)q;
-    if (x->crowding_distance == y->crowding_distance)
+    if (x->objetivos[0] == y->objetivos[0])
         ret = 0;
-    else if (x->crowding_distance > y->crowding_distance)
+    else if (x->objetivos[0] < y->objetivos[0])
         ret = -1;
     else
         ret = 1;
     return ret;
 }
 
-void sort_by_crowding_distance_assignment(Population *front){
-	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
+int compare1(const void *p, const void *q) {
+    int ret;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
+    if (x->objetivos[1] == y->objetivos[1])
+        ret = 0;
+    else if (x->objetivos[1] < y->objetivos[1])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
 }
 
-bool crowded_comparison_operator(Individuo *a, Individuo *b){
-	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
+int compare2(const void *p, const void *q) {
+    int ret;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
+    if (x->objetivos[2] == y->objetivos[2])
+        ret = 0;
+    else if (x->objetivos[2] < y->objetivos[2])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
 }
 
+int compare3(const void *p, const void *q) {
+    int ret;
+    Individuo * x = *(Individuo **)p;
+    Individuo * y = *(Individuo **)q;
+    if (x->objetivos[3] == y->objetivos[3])
+        ret = 0;
+    else if (x->objetivos[3] < y->objetivos[3])
+        ret = -1;
+    else
+        ret = 1;
+    return ret;
+}
 
 /*Adiciona o indivíduo de rank k no front k de FRONTS
  * Atualiza o size de FRONTS caso o rank seja maior*/
@@ -88,6 +482,8 @@ void add_Individuo_front(Fronts * fronts, Individuo *p){
 	fronti->list[fronti->size] = p;
 	fronti->size++;
 }
+
+
 
 /*Verifica se A domina B (melhor em pelo menos 1 obj)*/
 bool dominates(Individuo *a, Individuo *b){
@@ -175,278 +571,56 @@ void fast_nondominated_sort(Population *population, Fronts * fronts){
 	}
 }
 
+
+/*Deve ser chamado depois de determinar as funções objetivo*/
+void crowding_distance_assignment(Population *pop){
+	for (int i = 0; i < pop->size; i++){
+		pop->list[i]->crowding_distance = 0;
+	}
+	for (int k = 0; k < QTD_OBJECTIVES; k++){
+
+		sort_by_objective(pop, k);
+
+		pop->list[0]->crowding_distance = FLT_MAX;
+		pop->list[pop->size -1]->crowding_distance = FLT_MAX;
+
+		double obj_min = pop->list[0]->objetivos[k];//valor min do obj k
+		double obj_max = pop->list[pop->size -1]->objetivos[k];//valor max do obj k
+
+		double diff = fmax(0.0001, obj_max - obj_min);
+
+		for (int z = 1; z < pop->size -1; z++){
+			double prox_obj = pop->list[z+1]->objetivos[k];
+			double ant_obj = pop->list[z-1]->objetivos[k];
+
+			if (pop->list[z]->crowding_distance != FLT_MAX)
+				pop->list[z]->crowding_distance += (prox_obj - ant_obj) / diff;
+		}
+
+	}
+}
+
 /*Pra poder usar a função qsort com N objetivos,
  * precisamos implementar os n algoritmos de compare*/
-int compare0(const void *p, const void *q) {
+int compareByCrowdingDistanceMax(const void *p, const void *q) {
     int ret;
     Individuo * x = *(Individuo **)p;
     Individuo * y = *(Individuo **)q;
-    if (x->objetivos[0] == y->objetivos[0])
+    if (x->crowding_distance == y->crowding_distance)
         ret = 0;
-    else if (x->objetivos[0] < y->objetivos[0])
+    else if (x->crowding_distance > y->crowding_distance)
         ret = -1;
     else
         ret = 1;
     return ret;
 }
 
-int compare1(const void *p, const void *q) {
-    int ret;
-    Individuo * x = *(Individuo **)p;
-    Individuo * y = *(Individuo **)q;
-    if (x->objetivos[1] == y->objetivos[1])
-        ret = 0;
-    else if (x->objetivos[1] < y->objetivos[1])
-        ret = -1;
-    else
-        ret = 1;
-    return ret;
+bool crowded_comparison_operator(Individuo *a, Individuo *b){
+	return (a->rank < b->rank || (a->rank == b->rank && a->crowding_distance > b->crowding_distance));
 }
 
-int compare2(const void *p, const void *q) {
-    int ret;
-    Individuo * x = *(Individuo **)p;
-    Individuo * y = *(Individuo **)q;
-    if (x->objetivos[2] == y->objetivos[2])
-        ret = 0;
-    else if (x->objetivos[2] < y->objetivos[2])
-        ret = -1;
-    else
-        ret = 1;
-    return ret;
-}
-
-int compare3(const void *p, const void *q) {
-    int ret;
-    Individuo * x = *(Individuo **)p;
-    Individuo * y = *(Individuo **)q;
-    if (x->objetivos[3] == y->objetivos[3])
-        ret = 0;
-    else if (x->objetivos[3] < y->objetivos[3])
-        ret = -1;
-    else
-        ret = 1;
-    return ret;
-}
-
-int compare_rotas(const void *p, const void *q){
-	int ret;
-	Request * x = *(Request **)p;
-	Request * y = *(Request **)q;
-	if (x->matchable_riders == y->matchable_riders)
-		ret = 0;
-	else if (x->matchable_riders < y->matchable_riders)
-		ret = -1;
-	else
-		ret = 1;
-	return ret;
-}
-
-/*Ordena a população de acordo com o objetivo 0, 1, 2, 3*/
-void sort_by_objective(Population *pop, int obj){
-	switch(obj){
-		case 0:
-			qsort(pop->list, pop->size, sizeof(Individuo*), compare0 );
-			break;
-		case 1:
-			qsort(pop->list, pop->size, sizeof(Individuo*), compare1 );
-			break;
-		case 2:
-			qsort(pop->list, pop->size, sizeof(Individuo*), compare2 );
-			break;
-		case 3:
-			qsort(pop->list, pop->size, sizeof(Individuo*), compare3 );
-			break;
-	}
-}
-
-
-/*
- * A0101B = tamanho 6
- * 			de 0 a 5
- * 	Inserir na posiçao 0 não pode pq já tem o motorista
- * 	Inserir na posição 1, empurra os demais pra frente
- * 	Inserir o destino é contado à partir da origem (offset)
- * 	offset = 0 não pode pq é o proprio origem, 1 pode e é o próximo,
- * 	2 é o que pula um e insere.
- *
- * 	inserir_de_fato - Se deve inserir mesmo ou é apenas um teste
- * */
-bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
-	if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
-		printf("Parâmetros inválidos\n");
-		return false;
-	}
-
-	clone_rota(rota, ROTA_CLONE);
-
-	int ultimaPos = ROTA_CLONE->length-1;
-	//Empurra todo mundo depois da posição de inserção
-	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
-	}
-	//Empurra todo mundo depois da posição do offset
-	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
-		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
-	}
-
-	//Insere o conteúdo do novo carona
-	ROTA_CLONE->list[posicao_insercao].r = carona;
-	ROTA_CLONE->list[posicao_insercao].is_source = true;
-	//ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
-	//Insere o conteúdo do destino do carona
-	ROTA_CLONE->list[posicao_insercao+offset].r = carona;
-	ROTA_CLONE->list[posicao_insercao+offset].is_source = false;
-	//ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
-
-	ROTA_CLONE->length += 2;
-
-	//Aumentar a capacidade se tiver chegando no limite
-	if (ROTA_CLONE->length == ROTA_CLONE->capacity - 4){
-		ROTA_CLONE->capacity += MAX_SERVICES_MALLOC_ROUTE;
-		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
-	}
-	//Aumentar a capacidade se tiver chegando no limite
-	if (rota->length == rota->capacity - 4){
-		rota->capacity += MAX_SERVICES_MALLOC_ROUTE;
-		rota->list = realloc(rota->list, rota->capacity * sizeof(Service));
-	}
-
-	bool rotaValida = update_times(ROTA_CLONE);
-
-	if (rotaValida)
-		rotaValida = is_rota_valida(ROTA_CLONE);
-
-	if (rotaValida && inserir_de_fato){
-		carona->matched = true;
-		carona->id_rota_match = ROTA_CLONE->id;
-		clone_rota(ROTA_CLONE, rota);
-	}
-
-	return rotaValida;
-}
-
-
-/** Remove o carona que tem source na posicção Posicao_remocao
- * Retorna o valor do offset para encontrar o destino do carona removido
- * Retorna 0 caso não seja possível fazer a remoção do carona
- */
-int desfaz_insercao_carona_rota(Rota *rota, int posicao_remocao){
-	if (posicao_remocao > rota->length-2 || posicao_remocao <= 0 || rota->length < 4 || !rota->list[posicao_remocao].is_source) {
-		printf("Erro ao desfazer a inserção\n");
-		return 0;
-	}
-	
-	int offset = 1;
-	for (int k = posicao_remocao+1; k < rota->length; k++){//encontrando o offset
-		if (rota->list[posicao_remocao].r == rota->list[k].r && !rota->list[k].is_source)
-			break;
-		offset++;
-	}
-
-	for (int i = posicao_remocao; i < rota->length-1; i++){
-		rota->list[i] = rota->list[i+1];
-	}
-	rota->length--;
-
-	for (int i = posicao_remocao+offset-1; i < rota->length-1; i++){
-		rota->list[i] = rota->list[i+1];
-	}
-	rota->length--;
-
-	return offset;
-}
-
-/*Remove a marcação de matched dos riders*/
-void clean_riders_matches(Graph *g){
-	for (int i = g->drivers; i < g->total_requests; i++){
-		g->request_list[i].matched = false;
-	}
-}
-
-void evaluate_objective_functions_pop(Population* p, Graph *g){
-	for (int i = 0; i < p->size; i++){//Pra cada um dos indivíduos
-		evaluate_objective_functions(p->list[i], g);
-	}
-}
-
-
-void evaluate_objective_functions(Individuo *idv, Graph *g){
-	double distance = 0;
-	double vehicle_time = 0;
-	double rider_time = 0;
-	double riders_unmatched = g->riders;
-	for (int m = 0; m < idv->size; m++){//pra cada rota
-		Rota *rota = &idv->cromossomo[m];
-
-		vehicle_time += tempo_gasto_rota(rota, 0, rota->length-1);
-		distance += distancia_percorrida(rota);
-
-		for (int i = 1; i < rota->length-2; i++){//Pra cada um dos sources services
-			Service *service = &rota->list[i];
-			if (service->r->driver || !service->is_source)//só contabiliza os services source que não é o motorista
-				continue;
-			riders_unmatched--;
-			//Repete o for até encontrar o destino
-			//Ainda não considera o campo OFFSET contido no typedef SERVICE
-			for (int j = i+1; j < rota->length-1; j++){
-				Service *destiny = &rota->list[j];
-				if(destiny->is_source || service->r != destiny->r)
-					continue;
-
-				rider_time += tempo_gasto_rota(rota, i, j);
-				break;
-			}
-		}
-	}
-
-	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
-	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
-	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
-	idv->objetivos[RIDERS_UNMATCHED] = riders_unmatched;
-
-}
-
-
-
-/*Insere uma quantidade variável de caronas na rota informada
- * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
-void insere_carona_aleatoria_rota(Rota* rota){
-	Request * request = &g->request_list[rota->id];
-
-	int qtd_caronas_inserir = request->matchable_riders;
-	if (qtd_caronas_inserir == 0) return;
-	/*Configurando o index_array usado na aleatorização
-	 * da ordem de leitura dos caronas
-	 * Precisa fazer por causa do tamanho variável*/
-	for (int l = 0; l < qtd_caronas_inserir; l++){
-		index_array_caronas_inserir[l] = l;
-	}
-
-	shuffle(index_array_caronas_inserir, qtd_caronas_inserir);
-
-	for (int z = 0; z < qtd_caronas_inserir; z++){
-		int p = index_array_caronas_inserir[z];
-		Request * carona = request->matchable_riders_list[p];
-		if (!carona->matched){
-			int posicao_inicial = get_random_int(1, rota->length-1);
-			int offset = get_random_int(1, rota->length - posicao_inicial);
-			bool inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
-			if(inseriu) break;
-		}
-	}
-}
-
-/**
- * Insere caronas aleatórias para todas as caronas da rota
- * IMPORTANTE: Antes de chamar, todos os caronas já feito match devem estar no grafo
- */
-void insere_carona_aleatoria_individuo(Individuo * ind){
-	shuffle(index_array_drivers,g->drivers);
-	for (int i = 0; i < ind->size; i++){
-		int j = index_array_drivers[i];
-		insere_carona_aleatoria_rota(&ind->cromossomo[j]);
-	}
+void sort_by_crowding_distance_assignment(Population *front){
+	qsort(front->list, front->size, sizeof(Individuo*), compareByCrowdingDistanceMax );
 }
 
 
@@ -521,119 +695,8 @@ void merge(Population *p1, Population *p2, Population *big_population){
 	big_population->size = p1->size + p2->size;
 }
 
-/*seleção por torneio, k = 2*/
-Individuo * tournamentSelection(Population * parents){
-	Individuo * best = NULL;
-	for (int i = 0; i < 2; i++){
-		int pos = rand() % parents->size;
-		Individuo * outro = parents->list[pos];
-		if (best == NULL || crowded_comparison_operator(outro, best))
-			best = outro;
-	}
-	return best;
-}
-
-void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability){
-	int rotaSize = g->drivers;
-	offspring1->size = rotaSize;
-	offspring2->size = rotaSize;
-
-	int crossoverPoint = get_random_int(1, rotaSize-2);
-	double accept = (double)rand() / RAND_MAX;
-
-	if (accept < crossoverProbability){
-
-		copy_rota(parent2, offspring1, 0, crossoverPoint);
-		copy_rota(parent1, offspring1, crossoverPoint, rotaSize);
-		copy_rota(parent1, offspring2, 0, crossoverPoint);
-		copy_rota(parent2, offspring2, crossoverPoint, rotaSize);
-
-		repair(offspring1, g);
-		insere_carona_aleatoria_individuo(offspring1);
-
-		repair(offspring2, g);
-		insere_carona_aleatoria_individuo(offspring2);
-	}
-	else{
-		copy_rota(parent1, offspring1, 0, rotaSize);
-		copy_rota(parent2, offspring2, 0, rotaSize);
-	}
-}
 
 
-/**
- * Repara o indivíduo, retirando todas as caronas repetidas.
- * No fim, as caronas com match são registradas no grafo
- */
-void repair(Individuo *offspring, Graph *g){
-	clean_riders_matches(g);
-	for (int i = 0; i < offspring->size; i++){//Pra cada rota do idv
-		Rota *rota = &offspring->cromossomo[i];
-		
-		
-		//pra cada um dos services SOURCES na rota
-		for (int j = 1; j < rota->length-1; j++){
-			//Se é matched então algum SOURCE anterior já usou esse request
-			//Então deve desfazer a rota de j até o offset
-			if ((rota->list[j].is_source && rota->list[j].r->matched)){
-				desfaz_insercao_carona_rota(rota, j);//Diminui length em duas unidades
-				j--;
-			}
-			else if (rota->list[j].is_source){//Somente "senão", pois o tamanho poderia ter diminuido aí em cima.
-				rota->list[j].r->matched = true;
-				rota->list[j].r->id_rota_match = rota->id;
-			}
-		}
-	}
-}
-
-/** Transfere o carona de uma rota com possivelmente mais
- * riders para outra com menos.
- */
-void transfer_rider(Individuo * ind, Graph * g){
-	Rota * rotaInserir = NULL;
-	Rota * rotaRemover = NULL;
-	Request * caronaInserir;
-	Request * motoristaInserir;
-	bool ok = false;
-
-	for (int i = 0 ; i < g->drivers; i++){
-		int k = index_array_drivers[i];
-		rotaInserir = &ind->cromossomo[k];
-		motoristaInserir = &g->request_list[k];
-
-		if (rotaInserir->length/2 - 1 < motoristaInserir->matchable_riders){
-			for (int p =0; p < motoristaInserir->matchable_riders; p++){
-				Request * caronaTemp = motoristaInserir->matchable_riders_list[p];
-				Rota * rotaTemp = &ind->cromossomo[caronaTemp->id_rota_match];
-
-				if ( caronaTemp->matched && rotaTemp->id != rotaInserir->id && rotaInserir->length < rotaTemp->length){
-					caronaInserir = caronaTemp;
-					rotaRemover = rotaTemp;
-					ok = true;
-					break;
-				}
-			}
-			if (ok) break;
-		}
-	}
-
-	if (ok){
-		int posicao_inserir = 1 + (rand () % (rotaInserir->length-1));
-		caronaInserir->matched = false;
-		bool inseriu = insere_carona_rota(rotaInserir, caronaInserir, posicao_inserir, 1, true );
-
-		if (inseriu){
-			int position = 0;
-			for (int position = 0; position < rotaRemover->length; position ++){
-				if ( rotaRemover->list[position].r == caronaInserir )
-					break;
-			}
-			desfaz_insercao_carona_rota(rotaRemover,position);
-		}
-		caronaInserir->matched = true;
-	}
-}
 
 /*
  *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
@@ -740,62 +803,4 @@ void minimize_waiting_time(Rota * rota){
 	}
 }
 
-/*Tenta empurar os services uma certa quantidade de tempo*/
-bool push_forward(Rota * rota, int position, double pf){
-	for (int i = position; i < rota->length; i++){
-		if (pf == 0) return true;
-		Service * svc = &rota->list[i];
-		Service * ant = &rota->list[i-1];
-		double at = get_earliest_time_service(svc);
-		double bt = get_latest_time_service(svc);
-
-		double waiting_time = svc->service_time - ant->service_time - haversine(ant, svc);
-		if (waiting_time > 0)
-			pf -= waiting_time;
-		if (pf < 0)
-			pf = 0;
-		double new_st = rota->list[i].service_time + pf;
-		if (new_st < at || new_st > bt)
-			return false;
-	}
-	return true;
-}
-
-
-
-
-
-/** 1a mutação: remover o carona de uma rota e inserir em um motorista onde só cabe um carona*/
-void mutation(Individuo *ind, Graph *g, double mutationProbability){
-	repair(ind, g);
-	double accept = (double)rand() / RAND_MAX;
-
-	if (accept < mutationProbability){
-		int mutation_array[5];
-		fill_array(mutation_array, 5);
-		shuffle(mutation_array, 5);
-		transfer_rider(ind, g);
-	}
-}
-
-
-
-/*Gera uma população de filhos, usando seleção, crossover e mutação*/
-void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability){
-	offspring->size = 0;//Tamanho = 0, mas considera todos já alocados
-	int i = 0;
-	while (offspring->size < parents->size){
-		Individuo *parent1 = tournamentSelection(parents);
-		Individuo *parent2 = tournamentSelection(parents);
-
-		Individuo *offspring1 = offspring->list[i++];
-		Individuo *offspring2 = offspring->list[i];
-
-		crossover(parent1, parent2, offspring1, offspring2, g, crossoverProbability);
-
-		//mutation(offspring1, g, mutationProbability);
-		//mutation(offspring2, g, mutationProbability);
-		offspring->size += 2;
-	}
-}
 

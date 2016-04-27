@@ -29,9 +29,15 @@ typedef struct Request{
 	double delivery_earliest_time;
 	double delivery_latest_time;
 
-
+	/**Para o motorista: O número de riders que podem fazer match
+	 * Para o carona: O número de motoristas que podem fazer match
+	 */
 	int matchable_riders;//Somente para o caso do motorista: O número de riders que podem fazer match
-	struct Request ** matchable_riders_list;//Só é preenchida se este for um Driver
+	/**
+	 * Se esse request for um motorista, a lista contém os caronas que podem fazer match, e
+	 * vice versa.
+	 */
+	struct Request ** matchable_riders_list;
 }Request;
 
 /*Gene of a solution*/
@@ -103,34 +109,47 @@ typedef struct Graph{
 }Graph;
 
 
-//Graph *new_graph(int drivers, int riders, int total_requests);
-void add_Individuo_front(Fronts * fronts, Individuo *p);
 void malloc_rota_clone();
-bool update_times(Rota *rota);
-bool dominates(Individuo *a, Individuo *b);
-void add_dominated(Individuo *b, Individuo *a);
-void fast_nondominated_sort(Population *population, Fronts * fronts);
-void crowding_distance_assignment(Population *pop);
-bool crowded_comparison_operator(Individuo *a, Individuo *b);
+void insere_carona_aleatoria_individuo(Individuo * ind);
+void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset, bool is_source);
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato);
 void insere_carona_aleatoria_rota(Rota* rota);
 int desfaz_insercao_carona_rota(Rota *rota, int posicao_insercao);
 void clean_riders_matches(Graph *g);
 void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
-void free_population(Population *population);
-void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability );
-void empty_front_list(Fronts * f);
-void sort_by_crowding_distance_assignment(Population *front);
 void sort_by_objective(Population *pop, int obj);
 int compare_rotas(const void *p, const void *q);
-void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
-void merge(Population *p1, Population *p2, Population *big_population);
-void complete_free_individuo(Individuo * idv);
+bool push_forward(Rota * rota, int position, double pf);
+bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone);
+void transfer_rider(Individuo * ind, Graph * g);
+bool remove_insert(Rota * rota);
+bool swap_rider(Rota * rota);
 void repair(Individuo *offspring, Graph *g);
 void mutation(Individuo *ind, Graph *g, double mutationProbability);
-bool push_forward(Rota * rota, int position, double pf);
-void insere_carona_aleatoria_individuo(Individuo * ind);
+void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability);
+void crossover_and_mutation(Population *parents, Population *offspring,  Graph *g, double crossoverProbability, double mutationProbability );
+Individuo * tournamentSelection(Population * parents);
+int compare0(const void *p, const void *q);
+int compare1(const void *p, const void *q);
+int compare2(const void *p, const void *q);
+int compare3(const void *p, const void *q);
+
+
+
+void add_Individuo_front(Fronts * fronts, Individuo *p);
+bool dominates(Individuo *a, Individuo *b);
+void add_dominated(Individuo *b, Individuo *a);
+void fast_nondominated_sort(Population *population, Fronts * fronts);
+void crowding_distance_assignment(Population *pop);
+int compareByCrowdingDistanceMax(const void *p, const void *q);
+bool crowded_comparison_operator(Individuo *a, Individuo *b);
+void sort_by_crowding_distance_assignment(Population *front);
+void select_parents_by_rank(Fronts *frontsList, Population *parents, Population *offsprings, Graph *g);
+void merge(Population *p1, Population *p2, Population *big_population);
+
+bool update_times(Rota *rota);
+void minimize_waiting_time(Rota * rota);
 
 
 int * index_array_drivers;

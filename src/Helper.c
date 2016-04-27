@@ -147,7 +147,7 @@ Graph *new_graph(int drivers, int riders, int total_requests){
 		if (i < drivers)
 			g->request_list[i].matchable_riders_list = calloc(riders, sizeof(Request*));
 		else
-			g->request_list[i].matchable_riders_list = NULL;
+			g->request_list[i].matchable_riders_list = calloc(drivers, sizeof(Request*));
 	}
 	return g;
 }
@@ -226,15 +226,6 @@ void shuffle(int *array, int n) {
     }
 }
 
-
-/*Desaloca a população, mantendo os indivíduos alocados*/
-void free_population(Population *population){
-	if (population != NULL){
-		if (population->list != NULL)
-			free(population->list);
-		free(population);
-	}
-}
 
 /*Desaloca a população, desalocando também os indivíduos*/
 void dealoc_full_population(Population *population){
