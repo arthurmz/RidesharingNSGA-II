@@ -15,12 +15,24 @@
 
 /** Rota usada para a cópia em operações de mutação etc.*/
 Rota *ROTA_CLONE;
+Rota *ROTA_CLONE1;//Outros clones para não conflitar as cópias
+Rota *ROTA_CLONE2;
+Rota *ROTA_CLONE_PUSH;
 
 /** Aloca a ROTA_CLONE global */
 void malloc_rota_clone(){
 	/*Criando uma rota para cópia e validação das rotas*/
 	ROTA_CLONE = (Rota*) calloc(1, sizeof(Rota));
 	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+
+	ROTA_CLONE1 = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE1->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+
+	ROTA_CLONE2 = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE2->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+
+	ROTA_CLONE_PUSH = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE_PUSH->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 }
 
 /**
@@ -102,7 +114,8 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 }
 
 /*Insere uma quantidade variável de caronas na rota informada
- * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados*/
+ * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados
+ * IMPORTANTE: Antes de chamar, os caronas devem estar determinados.*/
 void insere_carona_aleatoria_rota(Rota* rota){
 	Request * request = &g->request_list[rota->id];
 
@@ -114,7 +127,7 @@ void insere_carona_aleatoria_rota(Rota* rota){
 	for (int l = 0; l < qtd_caronas_inserir; l++){
 		index_array_caronas_inserir[l] = l;
 	}
-
+	
 	shuffle(index_array_caronas_inserir, qtd_caronas_inserir);
 
 	for (int z = 0; z < qtd_caronas_inserir; z++){
