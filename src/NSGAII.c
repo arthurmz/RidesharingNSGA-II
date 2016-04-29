@@ -261,7 +261,7 @@ int compare_rotas(const void *p, const void *q){
 
 
 /*Tenta empurar os services uma certa quantidade de tempo*/
-bool push_forward(Rota * rota, int position, double pf){
+/*bool push_forward(Rota * rota, int position, double pushf){
 	for (int i = position; i < rota->length; i++){
 		if (pf == 0) return true;
 		Service * svc = &rota->list[i];
@@ -279,6 +279,49 @@ bool push_forward(Rota * rota, int position, double pf){
 			return false;
 	}
 	return true;
+}*/
+
+/*Tenta empurar os services uma certa quantidade de tempo
+ * retorna true se conseguiu fazer algum push forward
+ * forcar_clone:  Mantem as alterações mesmo se o push forward não for feito
+ * ou a rota for considerada inválida.*/
+bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone){
+	clone_rota(rota, ROTA_CLONE_PUSH);
+
+	if (position == -1)
+		position = get_random_int(0, ROTA_CLONE_PUSH->length-1);
+	Service * atual = &ROTA_CLONE_PUSH->list[position];
+	double maxPushf = get_latest_time_service(atual) -  atual->service_time;
+
+	if (pushf == -1){
+		pushf = maxPushf * ((double)rand() / RAND_MAX);
+	}
+	else{
+		pushf = fmin (pushf, maxPushf);
+	}
+
+	if (pushf <= 0) return false;
+
+	atual->service_time+= pushf;
+
+	for (int i = position+1; i < ROTA_CLONE_PUSH->length; i++){
+		if (pushf == 0)
+			break;
+		atual = &ROTA_CLONE_PUSH->list[i];
+		Service * ant = &ROTA_CLONE_PUSH->list[i-1];
+		double bt = get_latest_time_service(atual);
+
+		double waiting_time = atual->service_time - ant->service_time -  minimal_time_between_services(ant, atual);
+		pushf = fmax(0, pushf - waiting_time);
+		pushf = fmin(pushf, bt - atual->service_time);
+
+		atual->service_time+= pushf;
+	}
+	bool rotaValida = is_rota_valida(ROTA_CLONE_PUSH);
+	if (rotaValida || forcar_clone){
+		clone_rota(ROTA_CLONE_PUSH, rota);
+	}
+	return rotaValida;
 }
 
 
@@ -712,16 +755,20 @@ void merge(Population *p1, Population *p2, Population *big_population){
 
 
 /*
- *Atualiza os tempos de inserção no ponto de inserção até o fim da rota.
- *Ao mesmo tempo, se identificar uma situação onde não dá pra inserir, retorna false
+ *Atualiza os tempos de inserção e delivery da rota, ao mesmo tempo em que
+ * se identificar uma situação onde não dá pra inserir, retorna false.
  *
- *coloca o servicetime do delivery do motorista como o mais cedo
- *percorre a rota do fim pro início, setando o servicetime
+ *O algoritmo inicia colocando o servicetime do delivery do motorista como o mais cedo
+ *percorre a rota do fim pro início, setando o servicetime 'st_i'
  *st_i = st_i+1 - tempo(i, i+1);
  *se st_i < earliest_time
  *	push_forward(i+1);
  *se st_i > latest_time
  *	st_i = latest_time;
+ *
+ *
+ *O efeito disso é que sempre que um carona puder ser adicionado, ele será.
+ *(diferentemente do original, cujo source do motorista não é movido pra frente).
  *
  *Faz isso pra todo mundo, depois minimiza o tempo de espera.
  *
@@ -740,7 +787,6 @@ bool update_times(Rota *rota){
 	 *
 	 * se o service_time_i < at então service_time_i = at;
 	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
-	 * Isso é feito depois.
 	 *
 	 * Se o service_time_i > bt, service_time_i = bt, e agora
 	 * service_time_i+1 ganha um waiting_time;
@@ -761,30 +807,13 @@ bool update_times(Rota *rota){
 		else if (atual->service_time < at){
 			double pf = at - atual->service_time;
 			atual->service_time = at;
-			bool conseguiu = push_forward(rota, i+1, pf);
+			bool conseguiu = push_forward(rota, i+1, pf, false);
 			if (!conseguiu)
 				return false;
 		}
 	}
 
-	/**Empurra os service_times entre services que se aproximaram
-	 * por causa do calculo anterior
-	 */
-	/*
-	for (int i = 0; i < rota->length-1; i++){
-		Service * atual = &rota->list[i];
-		Service * next = &rota->list[i+1];
-		double bt = get_latest_time_service(next);
-
-		double tbs = time_between_services(atual, next);
-
-		if (next->service_time < atual->service_time + tbs)
-			next->service_time = atual->service_time + tbs;
-
-		if (next->service_time > bt)
-			return false;
-	}
-	*/
+	//TODO minimizar O WAITING time.
 	return true;
 }
 

@@ -120,7 +120,7 @@ void evaluate_objective_functions(Individuo *idv, Graph *g);
 void evaluate_objective_functions_pop(Population* p, Graph *g);
 void sort_by_objective(Population *pop, int obj);
 int compare_rotas(const void *p, const void *q);
-bool push_forward(Rota * rota, int position, double pf);
+bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone);
 bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone);
 void transfer_rider(Individuo * ind, Graph * g);
 bool remove_insert(Rota * rota);
