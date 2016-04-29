@@ -6,6 +6,7 @@
  */
 
 #include "Helper.h"
+#include "Calculations.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -122,6 +123,22 @@ void clone_rota(Rota * rota, Rota *cloneRota){
 	}
 }
 
+/** Retorna uma posição de carona aleatória
+ * da rota informada
+ */
+int get_random_carona_position(Rota * rota){
+	if (rota->length < 4) return -1;
+	int positionSources[(rota->length-2)/2];
+	//Procurando as posições dos sources
+	int k = 0;
+	for (int i = 1; i < rota->length-2; i++){
+		if (rota->list[i].is_source)
+			positionSources[k++] = i;
+	}
+	int position = positionSources[rand() % (rota->length-2)/2];
+	return position;
+}
+
 /*Aloca uma nova população de tamanho max_capacity
  * Cada elemento de list é um ponteiro pra indivíduo NÃO ALOCADO*/
 Population* new_empty_population(int max_capacity){
@@ -202,6 +219,10 @@ Graph * parse_file(char *filename){
 				&rq->delivery_location_latitude,
 				&rq->delivery_earliest_time,
 				&rq->delivery_latest_time);
+
+		double minimal_time = minimal_time_request(rq);
+		rq->delivery_earliest_time = rq->pickup_earliest_time + minimal_time;
+		rq->delivery_latest_time = rq->pickup_latest_time + minimal_time;
 		if(rq->id < drivers)
 			rq->driver = true;
 		else
@@ -308,6 +329,16 @@ void print_to_file_decision_space(Population * p, Graph * g, unsigned int seed){
 void fill_array(int * array, int size){
 	for (int i = 0; i < size; i++){
 		array[i] = i;
+	}
+}
+
+/** Verifica se a rota está chegando no limite e aumente sua capacidade */
+void increase_capacity(Rota *rota){
+	//Aumentar a capacidade se tiver chegando no limite
+	if (rota->length == rota->capacity - 4){
+		rota->capacity += MAX_SERVICES_MALLOC_ROUTE;
+		rota->list = realloc(rota->list, rota->capacity * sizeof(Service));
+		printf("Aumentando a capacidade da rota clone\n");
 	}
 }
 

@@ -15,8 +15,9 @@
 #include <float.h>
 #include <math.h>
 #include "Helper.h"
-#include "NSGAII.h"
 #include "Calculations.h"
+#include "NSGAII.h"
+
 
 void initialize_mem(Graph * g);
 void setup_matchable_riders(Graph * g);

@@ -122,7 +122,7 @@ void sort_by_objective(Population *pop, int obj);
 int compare_rotas(const void *p, const void *q);
 bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone);
 bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone);
-void transfer_rider(Individuo * ind, Graph * g);
+bool transfer_rider(Rota * rotaRemover, Individuo *ind, Graph * g);
 bool remove_insert(Rota * rota);
 bool swap_rider(Rota * rota);
 void repair(Individuo *offspring, Graph *g);

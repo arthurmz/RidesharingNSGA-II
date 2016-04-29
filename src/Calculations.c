@@ -10,12 +10,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/** Arredonda o número para 1 casa decimal */
+inline double round_2_decimal(double n){
+	return round(n * 10.0) / 10.0;
+}
+
+//True se a <= b, com diferença < epsilon
+bool leq(double a, double b){
+	return a <= b || (a - b) < 1;
+}
+
 /**Retorna um número inteiro entre minimum_number e maximum_number, inclusive */
 inline int get_random_int(int minimum_number, int max_number){
 	int modulo = max_number + 1 - minimum_number;
 	return minimum_number + (rand() % modulo);
 }
 
+/** Recebe uma rota e calcula a distância percorrida pelo motorista */
 double distancia_percorrida(Rota * rota){
 	double accDistance = 0;
 	for (int i = 0; i < rota->length -1; i++){
@@ -27,21 +38,23 @@ double distancia_percorrida(Rota * rota){
 	return accDistance;
 }
 
-/*Distância em km*/
+//Versão aproximada e mais rápida
 double haversine_helper(double lat1, double lon1, double lat2, double lon2){
-	double R = 6372.8;
-	double to_rad = 3.1415926536 / 180;
-	double dLat = to_rad * (lat2 - lat1);
-	double dLon = to_rad * (lon2 - lon1);
+	const double R = 6371;//Recomendado. não mudar
+	const double to_rad = 3.1415926536 / 180;
 
-	lat1 = to_rad * lat1;
-	lat2 = to_rad * lat2;
+	lat1 = lat1 * to_rad;
+	lon1 = lon1 * to_rad;
+	lat2 = lat2 * to_rad;
+	lon2 = lon2 * to_rad;
 
-	double a = pow (sin(dLat/2),2) + pow(sin(dLon/2),2) * cos(lat1) * cos(lat2);
-	double c = 2 * asin(sqrt(a));
-	return R * c;
+	double x = (lon2 - lon1) * cos((lat1 + lat2) / 2);
+	double y = (lat2 - lat1);
+	double result = sqrt(x * x + y * y) * R;
+	return result;
 }
 
+/** Distância entre os services */
 double haversine(Service *a, Service *b){
 	double lat1, long1, lat2, long2;
 	if (a->is_source){
@@ -64,24 +77,27 @@ double haversine(Service *a, Service *b){
 	return haversine_helper(lat1, long1, lat2, long2);
 }
 
-/*Tempo em minutos*/
+/** Retorna o tempo necessário para ir do ponto
+ * de pickup ao ponto de delivery de um mesmo request
+ * Usado para determinar a janela de tempo corretamente.
+ */
+double minimal_time_request(Request *rq){
+	double distance = haversine_helper(rq->pickup_location_latitude, rq->pickup_location_longitude,
+			rq->delivery_location_latitude, rq->delivery_location_longitude);
+	return distance / VEHICLE_SPEED * 60.0;
+}
+
+/*Tempo de viagem em minutos entre o ponto A e o ponto B*/
 double minimal_time_between_services(Service *a, Service *b){
 	double distance = haversine(a, b);
 	return distance / VEHICLE_SPEED * 60;
 }
 
 /*Calcula o tempo gasto para ir do ponto i ao ponto j, através de cada
- * request da rota.*/
+ * request da rota.
+ * Os tempos deve estar configurados corretamente nos services*/
 double tempo_gasto_rota(Rota *rota, int i, int j){
 	return rota->list[j].service_time - rota->list[i].service_time;
-/*
-	double accTime =0;
-	for (int k = i; k < j; k++){
-		Service *a = &rota->list[k];
-		Service *b = &rota->list[k+1];
-		accTime += minimal_time_between_services(a,b);
-	}
-	return accTime;*/
 }
 
 /**Calcula o service_time mais cedo possível para actual. Baseado
@@ -124,8 +140,8 @@ bool is_dentro_janela_tempo(Rota * rota){
 			Service *destiny = &rota->list[j];
 			if(destiny->is_source || source->r != destiny->r) continue;
 
-			if ( ! ((source->r->pickup_earliest_time <= source->service_time && source->service_time <= source->r->pickup_latest_time)
-				&& (destiny->r->delivery_earliest_time <= destiny->service_time && destiny->service_time <= destiny->r->delivery_latest_time)))
+			if ( ! ((leq(source->r->pickup_earliest_time, source->service_time) && leq(source->service_time, source->r->pickup_latest_time))
+				&& (leq(destiny->r->delivery_earliest_time, destiny->service_time) && leq(destiny->service_time, destiny->r->delivery_latest_time))))
 				return false;
 		}
 	}
@@ -157,18 +173,18 @@ bool is_carga_dentro_limite(Rota *rota){
 bool is_distancia_motorista_respeitada(Rota * rota){
 	Service * source = &rota->list[0];
 	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + BD * haversine(source, destiny);//Maximum Travel Distance
+	double MTD = AD + (BD * haversine(source, destiny));//Maximum Travel Distance
 	double accDistance = distancia_percorrida(rota);
-	return accDistance <= MTD;
+	return leq(accDistance, MTD);
 }
 
 /*Verifica se o tempo do request partindo do índice I e chegando no índice J é respeitado*/
 bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
-	double MTT = AT + BT * minimal_time_between_services(source, destiny);
+	double MTT = AT + (BT * minimal_time_between_services(source, destiny));
 	double accTime = tempo_gasto_rota(rota, i, j);
-	return accTime <= MTT;
+	return leq(accTime, MTT);
 }
 
 /*Verifica se os tempos de todos os requests nessa rota estão sendo respeitados*/
@@ -187,6 +203,40 @@ bool is_tempos_respeitados(Rota *rota){
 		}
 	}
 	return true;
+}
+
+/*Verifica se a ordem de inserção e remoção dos riders é respeitada
+ * Usar apenas no swap, pois só lá essa restrição pode ser quebrada*/
+bool is_ordem_respeitada(Rota * rota){
+	int existe(Request ** p, int alt, Request * content){
+		for (int i = 0; i < alt; i++){
+			if (p[i] == content)
+				return i;
+		}
+		return -1;
+	}
+
+	void remove(Request ** p, int alt, int pos){
+		for (int i = pos; i < alt; i++){
+			p[i] = p[i+1];
+		}
+	}
+
+	Request * pilha[rota->length];
+	int altura = 0;
+	for (int i = 0; i < rota->length; i++){//Pra cada um dos sources
+		Service *source = &rota->list[i];
+		if (source->is_source)
+			pilha[altura++] = source->r;
+		else{
+			int pos = existe(pilha, altura, source->r);
+			if (pos != -1){
+				remove(pilha, altura, pos);
+				altura--;
+			}
+		}
+	}
+	return altura == 0;
 }
 
 
