@@ -151,7 +151,6 @@ void merge(Population *p1, Population *p2, Population *big_population);
 bool update_times(Rota *rota);
 void minimize_waiting_time(Rota * rota);
 
-
 int * index_array_drivers;
 int * index_array_drivers_transfer_rider;
 int * index_array_drivers_mutation;

@@ -13,7 +13,6 @@
 #include "Calculations.h"
 #include "NSGAII.h"
 
-
 /** Rota usada para a cópia em operações de mutação etc.*/
 Rota *ROTA_CLONE;
 Rota *ROTA_CLONE1;//Outros clones para não conflitar as cópias
@@ -48,18 +47,52 @@ void insere_carona_aleatoria_individuo(Individuo * ind){
 	}
 }
 
-
 /*
- * A0101B = tamanho 6
- * 			de 0 a 5
- * 	Inserir na posiçao 0 não pode pq já tem o motorista
- * 	Inserir na posição 1, empurra os demais pra frente
- * 	Inserir o destino é contado à partir da origem (offset)
- * 	offset = 0 não pode pq é o proprio origem, 1 pode e é o próximo,
- * 	2 é o que pula um e insere.
- *
- * 	inserir_de_fato - Se deve inserir mesmo ou é apenas um teste
- * */
+void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset, bool is_source){
+
+	int ultimaPos = rota->length-1;
+	//Empurra todo mundo depois da posição de inserção
+	for (int i = ultimaPos; i >= posicao_insercao; i--){
+		rota->list[i+1] = rota->list[i];
+	}
+
+	//Insere o conteúdo do novo carona
+	rota->list[posicao_insercao].r = carona;
+	rota->list[posicao_insercao].is_source = is_source;
+	rota->length++;
+}*/
+
+void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset, bool is_source){
+	Service * ant = NULL;
+	Service * atual = NULL;
+	Service * next = NULL;
+	double PF;
+	double nextTime;
+
+	int ultimaPos = rota->length-1;
+	//Empurra todo mundo depois da posição de inserção
+	for (int i = ultimaPos; i >= posicao_insercao; i--){
+		rota->list[i+1] = rota->list[i];
+	}
+	ant = &rota->list[posicao_insercao-1];
+	atual = &rota->list[posicao_insercao];
+	next = &rota->list[posicao_insercao+1];
+
+	atual->r = carona;
+	atual->is_source = is_source;
+	atual->offset = offset;
+	atual->service_time = calculate_service_time(atual, ant);
+
+	nextTime = calculate_service_time(next, atual);
+	PF = nextTime - next->service_time;
+	if (PF > 0) {
+		next->service_time+= PF;
+		if (posicao_insercao+2 < rota->length)
+			push_forward(rota, posicao_insercao+2, PF, true);
+	}
+	rota->length++;
+}
+
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
 	if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
 		printf("Parâmetros inválidos\n");
@@ -67,51 +100,27 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 	}
 
 	clone_rota(rota, ROTA_CLONE);
+	bool isRotaValida = false;
+	insere_carona(ROTA_CLONE, carona, posicao_insercao, offset, true);
+	insere_carona(ROTA_CLONE, carona, posicao_insercao+offset, 0, false);
 
-	int ultimaPos = ROTA_CLONE->length-1;
-	//Empurra todo mundo depois da posição de inserção
-	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
-	}
-	//Empurra todo mundo depois da posição do offset
-	for (int i = ultimaPos+1; i >= posicao_insercao + offset; i--){
-		ROTA_CLONE->list[i+1] = ROTA_CLONE->list[i];
-	}
+	increase_capacity(ROTA_CLONE);
+	increase_capacity(rota);
 
-	//Insere o conteúdo do novo carona
-	ROTA_CLONE->list[posicao_insercao].r = carona;
-	ROTA_CLONE->list[posicao_insercao].is_source = true;
-	//ROTA_CLONE->list[posicao_insercao].service_time = pickup_result;
-	//Insere o conteúdo do destino do carona
-	ROTA_CLONE->list[posicao_insercao+offset].r = carona;
-	ROTA_CLONE->list[posicao_insercao+offset].is_source = false;
-	//ROTA_CLONE->list[posicao_insercao+offset].service_time = delivery_result;
+	/*isRotaValida = update_times(ROTA_CLONE);
 
-	ROTA_CLONE->length += 2;
+	if (isRotaValida)
+		isRotaValida = is_rota_valida(ROTA_CLONE);*/
+		
+	isRotaValida = is_rota_valida(ROTA_CLONE);
 
-	//Aumentar a capacidade se tiver chegando no limite
-	if (ROTA_CLONE->length == ROTA_CLONE->capacity - 4){
-		ROTA_CLONE->capacity += MAX_SERVICES_MALLOC_ROUTE;
-		ROTA_CLONE->list = realloc(ROTA_CLONE->list, ROTA_CLONE->capacity * sizeof(Service));
-	}
-	//Aumentar a capacidade se tiver chegando no limite
-	if (rota->length == rota->capacity - 4){
-		rota->capacity += MAX_SERVICES_MALLOC_ROUTE;
-		rota->list = realloc(rota->list, rota->capacity * sizeof(Service));
-	}
-
-	bool rotaValida = update_times(ROTA_CLONE);
-
-	if (rotaValida)
-		rotaValida = is_rota_valida(ROTA_CLONE);
-
-	if (rotaValida && inserir_de_fato){
+	if (isRotaValida && inserir_de_fato){
 		carona->matched = true;
 		carona->id_rota_match = ROTA_CLONE->id;
 		clone_rota(ROTA_CLONE, rota);
 	}
 
-	return rotaValida;
+	return isRotaValida;
 }
 
 /*Insere uma quantidade variável de caronas na rota informada
@@ -275,7 +284,8 @@ bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone){
 	double maxPushf = get_latest_time_service(atual) -  atual->service_time;
 
 	if (pushf == -1){
-		pushf = maxPushf * ((double)rand() / RAND_MAX);
+		//pushf = maxPushf * ((double)rand() / RAND_MAX);
+		pushf = maxPushf;
 	}
 	else{
 		pushf = fmin (pushf, maxPushf);
@@ -316,7 +326,8 @@ bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone){
 	double maxPushb = atual->service_time - get_earliest_time_service(atual);
 
 	if (pushb == -1){
-		pushb = maxPushb * ((double)rand() / RAND_MAX);
+		//pushb = maxPushb * ((double)rand() / RAND_MAX);
+		pushb = maxPushb;
 	}
 	else{
 		pushb = fmin (pushb, maxPushb);
@@ -381,8 +392,8 @@ bool transfer_rider(Rota * rotaRemover, Individuo *ind, Graph * g){
 
 	//Só permite realizar o transfer se a rota de destinos tiver menos matchs POSSÍVEIS
 	//A idéia é que as caronas sejam movidas para as rotas mais limitadas.
-	if (rotaInserir->list[0].r->matchable_riders >= rotaRemover->list[0].r->matchable_riders)
-		return false;
+	/*if (rotaInserir->list[0].r->matchable_riders >= rotaRemover->list[0].r->matchable_riders)
+		return false;*/
 
 	bool conseguiu = false;
 	int posicaoInserir = get_random_int(1, rotaInserir->length-1);
@@ -437,7 +448,20 @@ bool remove_insert(Rota * rota){
 	Request * carona = ROTA_CLONE1->list[position].r;
 	int offset = desfaz_insercao_carona_rota(ROTA_CLONE1, position);
 
-	update_times(ROTA_CLONE1);//Nâo vai falhar, já que é remoção
+	//Calculando o push backward máximo
+	double horaMaisCedo = calculate_service_time(&ROTA_CLONE1->list[position], &ROTA_CLONE1->list[position-1]);
+	double PF = ROTA_CLONE1->list[position].service_time - horaMaisCedo;
+	push_backward(ROTA_CLONE1, position,PF, true);
+	if (position+offset < ROTA_CLONE1->length){
+		//Calculando o push backward máximo
+		double horaMaisCedoOffset = calculate_service_time(&ROTA_CLONE1->list[position+offset], &ROTA_CLONE1->list[position+offset-1]);
+		double PFOffset = ROTA_CLONE1->list[position+offset].service_time - horaMaisCedoOffset;
+		push_backward(ROTA_CLONE1, position+offset, PFOffset, true);
+	}
+	
+	
+	
+	//update_times(ROTA_CLONE1);//Nâo vai falhar, já que é remoção
 
 	carona->matched = false;
 	insere_carona_aleatoria_rota(ROTA_CLONE1);
@@ -518,17 +542,21 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability){
 			int k = index_array_drivers_mutation[r];
 			Rota * rota  = &ind->cromossomo[k];
 
-			int op = rand() % 3;
+			int op = rand() % 5;
 			switch(op){
 				case (0):{
-					remove_insert(rota);
+					push_backward(rota, -1, -1, false);
 					break;
 				}
 				case (1):{
-					transfer_rider(rota,ind, g);
+					remove_insert(rota);
 					break;
 				}
 				case (2):{
+					transfer_rider(rota,ind, g);
+					break;
+				}
+				case (3):{
 					swap_rider(rota);
 					break;
 				}

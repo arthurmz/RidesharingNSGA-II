@@ -126,7 +126,7 @@ void clone_rota(Rota * rota, Rota *cloneRota){
 /** Retorna uma posição de carona aleatória
  * da rota informada
  */
-int get_random_carona_position(Rota * rota){
+inline int get_random_carona_position(Rota * rota){
 	if (rota->length < 4) return -1;
 	int positionSources[(rota->length-2)/2];
 	//Procurando as posições dos sources
