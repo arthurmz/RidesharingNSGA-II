@@ -17,7 +17,7 @@ inline double round_2_decimal(double n){
 
 //True se a <= b, com diferença < epsilon
 bool leq(double a, double b){
-	return a <= b || (a - b) < 1;
+	return a <= b || (a - b) < EPSILON;
 }
 
 /**Retorna um número inteiro entre minimum_number e maximum_number, inclusive */
