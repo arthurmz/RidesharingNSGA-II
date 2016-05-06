@@ -542,7 +542,7 @@ void mutation(Individuo *ind, Graph *g, double mutationProbability){
 			int k = index_array_drivers_mutation[r];
 			Rota * rota  = &ind->cromossomo[k];
 
-			int op = rand() % 5;
+			int op = rand() % 4;
 			switch(op){
 				case (0):{
 					push_backward(rota, -1, -1, false);
