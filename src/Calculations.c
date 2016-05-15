@@ -184,7 +184,7 @@ bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * destiny = &rota->list[j];
 	double MTT = AT + (BT * minimal_time_between_services(source, destiny));
 	double accTime = tempo_gasto_rota(rota, i, j);
-	return leq(accTime, MTT);
+	return leq(accTime, MTT) && accTime >= 0;//Não é válido se o tempo acumulado for negativo
 }
 
 /*Verifica se os tempos de todos os requests nessa rota estão sendo respeitados*/
