@@ -202,6 +202,7 @@ Graph * parse_file(char *filename){
 	sscanf(linha_temp, "%i", &drivers);
 	fgets(linha_temp, 1000, fp);
 	sscanf(linha_temp, "%i", &riders);
+	printf("Riders: %d Drivers: %d\n", riders, drivers);
 	Graph * g = new_graph(drivers, riders, total_requests);
 
 	int index_request = 0;

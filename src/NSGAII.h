@@ -156,8 +156,9 @@ int * index_array_drivers_transfer_rider;
 int * index_array_drivers_mutation;
 int * index_array_caronas_inserir;
 
-
-Request ** index_array_rotas;//Array com os índices ordenados das rotas, da menor pra maior qtd de matchable_riders
+//Array com os índices ordenados das rotas, da menor pra maior qtd de matchable_riders
+//Atualmente não é usado.
+Request ** index_array_rotas;
 
 Graph * g;
 
