@@ -10,6 +10,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+inline int qtd_caronas_combinados(Rota *rota){
+	if (rota->length <= 2)
+		return 0;
+	return (rota->length - 2)/2;
+
+}
+
 /** Arredonda o número para 1 casa decimal */
 inline double round_2_decimal(double n){
 	return round(n * 10.0) / 10.0;
@@ -21,7 +28,7 @@ bool leq(double a, double b){
 }
 
 /**Retorna um número inteiro entre minimum_number e maximum_number, inclusive */
-inline int get_random_int(int minimum_number, int max_number){
+int get_random_int(int minimum_number, int max_number){
 	int modulo = max_number + 1 - minimum_number;
 	return minimum_number + (rand() % modulo);
 }
@@ -32,15 +39,49 @@ double distancia_percorrida(Rota * rota){
 	for (int i = 0; i < rota->length -1; i++){
 		Service *a = &rota->list[i];
 		Service *b = &rota->list[i+1];
-		accDistance += haversine(a,b);
+		double distancia = haversine(a,b);
+		double tempoGastoRota = tempo_gasto_rota(rota, i, i+1);
+		if (distancia > tempoGastoRota)
+			distancia = tempoGastoRota;//Evita que os arredontamentos pra cima do haversine ultrapassem o tempo gasto da rota.
+		accDistance += distancia;
 	}
 
 	return accDistance;
 }
 
+/*Distância em km ORIGINAL*/
+double haversine_helper_or(double lat1, double lon1, double lat2, double lon2){
+	const double R = 6371;//Recomendado. não mudar
+	const double to_rad = 3.1415926536 / 180;
+	double dLat = to_rad * (lat2 - lat1);
+	double dLon = to_rad * (lon2 - lon1);
+
+	lat1 = to_rad * lat1;
+	lat2 = to_rad * lat2;
+
+	double a = pow (sin(dLat/2),2) + pow(sin(dLon/2),2) * cos(lat1) * cos(lat2);
+	double c = 2 * asin(sqrt(a));
+	return R * c;
+}
+
+/** rosetacode */
+double haversine_helper_ros(double th1, double ph1, double th2, double ph2){
+	double TO_RAD = 3.1415926536 / 180;
+	double R = 6371;//Valor que chega mais perto do artigo
+	double dx, dy, dz;
+	ph1 -= ph2;
+	ph1 *= TO_RAD, th1 *= TO_RAD, th2 *= TO_RAD;
+
+	dz = sin(th1) - sin(th2);
+	dx = cos(ph1) * cos(th1) - cos(th2);
+	dy = sin(ph1) * cos(th1);
+	double result = asin(sqrt(dx * dx + dy * dy + dz * dz) / 2) * 2 * R;
+	return round(result * 10.0)/10.0;
+}
+
 //Versão aproximada e mais rápida
 double haversine_helper(double lat1, double lon1, double lat2, double lon2){
-	const double R = 6371;//Recomendado. não mudar
+	const double R = 6371;
 	const double to_rad = 3.1415926536 / 180;
 
 	lat1 = lat1 * to_rad;
@@ -52,6 +93,18 @@ double haversine_helper(double lat1, double lon1, double lat2, double lon2){
 	double y = (lat2 - lat1);
 	double result = sqrt(x * x + y * y) * R;
 	return result;
+}
+
+//versão do excel
+double haversine_helper_excel(double lat1, double lon1, double lat2, double lon2){
+	const double to_rad = 3.1415926536 / 180;
+	double x = cos((90-lat1)*to_rad);
+	double y = cos((90-lat2)*to_rad);
+	double z = sin((90-lat1)*to_rad);
+	double w = sin((90-lat2)*to_rad);
+	double p = cos((lon1-lon2)*to_rad);
+
+	return acos(x * y + z * w * p) *6371;
 }
 
 /** Distância entre os services */
@@ -134,6 +187,8 @@ inline double get_latest_time_service(Service * atual){
 bool is_dentro_janela_tempo_is_tempos_respeitados(Rota * rota){
 
 	for (int i = 0; i < rota->length-1; i++){
+		if (rota->list[i+1].service_time < rota->list[i].service_time)
+			return false;
 		Service *source = &rota->list[i];
 		if (!source->is_source) continue;
 		for (int j = i+1; j < rota->length; j++){
@@ -200,16 +255,17 @@ bool is_carga_dentro_limite2(Rota *rota){
 bool is_distancia_motorista_respeitada(Rota * rota){
 	Service * source = &rota->list[0];
 	Service * destiny = &rota->list[rota->length-1];
-	double MTD = AD + (BD * haversine(source, destiny));//Maximum Travel Distance
+	double MTD = ceil(AD + (BD * haversine(source, destiny)));//Maximum Travel Distance
 	double accDistance = distancia_percorrida(rota);
-	return leq(accDistance, MTD);
+	bool ok = leq(accDistance, MTD);
+	return ok;
 }
 
 /*Verifica se o tempo do request partindo do índice I e chegando no índice J é respeitado*/
 bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * source = &rota->list[i];
 	Service * destiny = &rota->list[j];
-	double MTT = AT + (BT * minimal_time_between_services(source, destiny));
+	double MTT = ceil(AT + (BT * minimal_time_between_services(source, destiny)));
 	double accTime = tempo_gasto_rota(rota, i, j);
 	return leq(accTime, MTT) && accTime >= 0;//Não é válido se o tempo acumulado for negativo
 }

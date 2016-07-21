@@ -1,0 +1,168 @@
+diferenças do nsga ii
+
+
+
+/** Transfere o carona de uma rota para outra
+ *
+ * Escolhe uma rota aleatória com carona.
+ * Invalida o match temporariamente
+ * Escolhe uma rota que possa fazer match com o carona
+ * Tenta inserir o carona
+ * Se conseguiu, remove o carona da rota original
+ */
+bool transfer_rider(Rota * rotaRemover, Individuo *ind, Graph * g){
+	Rota * rotaInserir = NULL;
+	Request * caronaInserir;
+
+	//Procurando um carona qualquer
+	int pos = get_random_carona_position(rotaRemover);
+	if (pos == -1)
+		return false;//Se não achou, retorna
+	else
+		caronaInserir = rotaRemover->list[pos].r;
+
+	//Se 0 não tem nada pra fazer, se 1 então só pode na própria rota
+	if (caronaInserir->matchable_riders < 2)
+		return false;
+
+	int k = rand() % caronaInserir->matchable_riders;
+	rotaInserir = &ind->cromossomo[caronaInserir->matchable_riders_list[k]->id];
+
+	//Troca a rota, se a escolhida aleatoriamente foi a própria rotaRemover
+	if (rotaInserir == rotaRemover){
+		if (k < caronaInserir->matchable_riders-1)
+			k++;
+		else
+			k = 0;
+		rotaInserir = &ind->cromossomo[caronaInserir->matchable_riders_list[k]->id];
+	}
+
+	//Só permite realizar o transfer se a rota de destinos tiver menos matchs POSSÍVEIS
+	//A idéia é que as caronas sejam movidas para as rotas mais limitadas.
+	/*if (rotaInserir->list[0].r->matchable_riders >= rotaRemover->list[0].r->matchable_riders)
+		return false;*/
+
+	bool conseguiu = false;
+	int posicaoInserir = get_random_int(1, rotaInserir->length-1);
+	//Invalida o carona
+	caronaInserir->matched = false;
+	conseguiu = insere_carona_rota(rotaInserir, caronaInserir, posicaoInserir, 1, true);//TODO variar o offset
+	//Se conseguiu inserir, remove o carona do rotaRemover
+	if (conseguiu)
+		desfaz_insercao_carona_rota(rotaRemover,pos);
+	//Sempre vai ser válido em uma ou outra outra
+	caronaInserir->matched = true;
+
+	return conseguiu;
+}
+
+
+
+
+
+
+
+
+
+
+/*
+ *Atualiza os tempos de inserção e delivery da rota, ao mesmo tempo em que
+ * se identificar uma situação onde não dá pra inserir, retorna false.
+ *
+ *O algoritmo inicia colocando o servicetime do delivery do motorista como o mais cedo
+ *percorre a rota do fim pro início, setando o servicetime 'st_i'
+ *st_i = st_i+1 - tempo(i, i+1);
+ *se st_i < earliest_time
+ *	push_forward(i+1);
+ *se st_i > latest_time
+ *	st_i = latest_time;
+ *
+ *
+ *O efeito disso é que sempre que um carona puder ser adicionado, ele será.
+ *(diferentemente do original, cujo source do motorista não é movido pra frente).
+ *
+ *Faz isso pra todo mundo, depois minimiza o tempo de espera.
+ *
+ *Update: Considerar que se uma rota é temporariamente válida
+ *ao inserir a origem e destino. ela também vai ser válida ao inserir
+ *apenas a origem!
+ * */
+bool update_times(Rota *rota){
+	Service * motoristaDelivery = &rota->list[rota->length-1];
+
+	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
+
+	/**
+	 * Calcula o service_time de i =
+	 * service_time_i = service_time_i+1 - tempo(i, i+1)
+	 *
+	 * se o service_time_i < at então service_time_i = at;
+	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
+	 *
+	 * Se o service_time_i > bt, service_time_i = bt, e agora
+	 * service_time_i+1 ganha um waiting_time;
+	 */
+	for (int i = rota->length-2; i >= 0; i--){
+		Service *atual = &rota->list[i];
+		Service *prox = &rota->list[i+1];
+		double at = get_earliest_time_service(atual);
+		double bt = get_latest_time_service(atual);
+
+		double tbs = minimal_time_between_services(atual, prox);
+
+		atual->service_time = prox->service_time - tbs;
+
+		if (atual->service_time > bt){
+			atual->service_time = bt;
+		}
+		else if (atual->service_time < at){
+			double pf = at - atual->service_time;
+			atual->service_time = at;
+			bool conseguiu = push_forward(rota, i+1, pf, false);
+			if (!conseguiu)
+				return false;
+		}
+	}
+
+	//TODO minimizar O WAITING time.
+	return true;
+}
+
+/*
+ * Atualiza os tempos de inserção, minimizando os tempos de espera
+ * aumentando as chances da rota ser válida.
+ *
+ * o waiting_time é minimizado fazendo um push_foward dos elementos que
+ * estão ANTES do ponto onde há waiting_time;
+ *
+ * idéia:
+ * percorre sequencialmente enquanto não acha um waiting_time >0
+ * > vai atualizando o máximo de push_foward no ponto anterior
+ * > quando achar waiting time > 0
+ * >> faz service_time = max do push forward possível.
+ *
+ * Ex:
+ *
+ * A+ 1+ 1- 3+ 3- 2+ 2+ A-
+ *
+ * Depois de inserir o 3+ no earliest time
+ *
+ */
+void minimize_waiting_time(Rota * rota){
+	for (int i = 0; i < rota->length-1; i++){
+		Service *ant = &rota->list[i];
+		Service *actual = &rota->list[i+1];
+		actual->service_time = calculate_service_time(actual, ant);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+

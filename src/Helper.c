@@ -72,8 +72,9 @@ Individuo * generate_random_individuo(Graph *g, bool insereCaronasAleatorias){
 		rota->length = 2;
 	}
 
-	if (insereCaronasAleatorias)
-		insere_carona_aleatoria_individuo(idv);
+	if (insereCaronasAleatorias){
+		insere_carona_aleatoria_individuo(idv, true);
+	}
 
 	return idv;
 }
@@ -254,6 +255,25 @@ void shuffle(int *array, int n) {
     }
 }
 
+//Preenche o vetor com 1,2,3.. até n
+//first: valor do primeiro elemento
+void fill(int *array, int first, int n){
+	for (int i = 0; i < n; i++){
+		array[i] = first + i;
+	}
+}
+
+//Preenche o vetor com 1,2,3.. e então aleatoriza a ordem até n
+//first: valor do primeiro elemento
+void fill_shuffle(int *array, int first, int n){
+	for (int i = 0; i < n; i++){
+		array[i] = first + i;
+	}
+	shuffle(array, n);
+}
+
+
+
 
 /*Desaloca a população, desalocando também os indivíduos*/
 void dealoc_full_population(Population *population){
@@ -287,9 +307,10 @@ void dealoc_fronts(Fronts * front){
 
 
 void print(Population *p){
+	printf("Vehicles' distance | Vehicles' time | Riders' time | Riders Unmatched\n");
 	for (int i = 0; i < p->size; i++){
 		Individuo *id = p->list[i];
-		printf("%f %f %f %f\n",id->objetivos[0], id->objetivos[1], id->objetivos[2], id->objetivos[3]);
+		printf("%f %f %f %f\n",id->objetivos_bruto[0], id->objetivos_bruto[1], id->objetivos_bruto[2], id->objetivos_bruto[3]);
 	}
 }
 
@@ -332,13 +353,6 @@ void print_to_file_decision_space(Population * p, Graph * g, unsigned int seed){
 	fclose(fp);
 }
 
-/**Preenche o array sequencialmente*/
-void fill_array(int * array, int size){
-	for (int i = 0; i < size; i++){
-		array[i] = i;
-	}
-}
-
 /** Verifica se a rota está chegando no limite e aumente sua capacidade */
 void increase_capacity(Rota *rota){
 	//Aumentar a capacidade se tiver chegando no limite
@@ -349,6 +363,61 @@ void increase_capacity(Rota *rota){
 	}
 }
 
+bool verifica_individuo(Individuo * offspring){
+
+	bool valido = true;
+
+	for (int q = 0; q < offspring->size; q++) {
+		Rota *rota = &offspring->cromossomo[q];
+
+		if (rota->length > rota->capacity){
+			printf("Erro no length da rota %d\n", q);
+			return false;
+		}
+
+		int index = 0;
+		Request * rqts[100] = {0};
+		//Verifica se cada carona inserido é retirado
+		//Verifica se o carona é feito match só UMA VEZ
+		//Verifica se o carona é feito match na rota que está.
+		for (int k = 0; k < rota->length; k++){
+			Service * srv = &rota->list[k];
+
+			if (srv->is_source){
+				Service * destino = NULL;
+				for (int g = k; g < rota->length; g++){
+					if (rota->list[g].r == srv->r && !rota->list[g].is_source){
+						destino = &rota->list[g];
+						break;
+					}
+				}
+				if (destino == NULL){
+					printf("Erro na remoção de um carona ou driver da rota %d\n", q);
+					return false;
+				}
+
+				if(!srv->r->driver){
+					bool contem = false;
+					for (int r = 0; r < index; r++){
+						if (rqts[r] == srv->r){
+							contem = true;
+							break;
+						}
+					}
+					if (contem){
+						printf("Erro na rota %d, carona duplicada\n", q);
+						valido = false;
+					}
+					else{
+						rqts[index++] = srv->r;
+					}
+				}
+			}
+		}
+	}
+	return valido;
+}
+
 /** Verifica se a população é válida
  * Retorna true se a população é válida.
  *
@@ -356,59 +425,12 @@ void increase_capacity(Rota *rota){
 bool verifica_populacao(Population *p){
 	for (int x = 0; x < p->size; x++) {
 		Individuo * offspring = p->list[x];
-
 		if (offspring->size != g->drivers){
 			printf("Erro no tamanho do indivíduo %d\n", x);
 			return false;
 		}
-		for (int q = 0; q < offspring->size; q++) {
-			Rota *rota = &offspring->cromossomo[q];
-
-			if (rota->length > rota->capacity){
-				printf("Erro no length da rota %d\n", q);
-				return false;
-			}
-
-			int index = 0;
-			Request * rqts[100];
-			//Verifica se cada carona inserido é retirado
-			//Verifica se o carona é feito match só UMA VEZ
-			for (int k = 0; k < rota->length; k++){
-				Service * srv = &rota->list[k];
-
-				if (srv->is_source){
-					Service * destino = NULL;
-					for (int g = k; g < rota->length; g++){
-						if (rota->list[g].r == srv->r && !rota->list[g].is_source){
-							destino = &rota->list[g];
-							break;
-						}
-					}
-					if (destino == NULL){
-						printf("Erro na remoção de um carona ou driver da rota %d\n", q);
-						return false;
-					}
-
-					if(!srv->r->driver){
-						bool contem = false;
-						for (int r = 0; r < index; r++){
-							if (rqts[r] == srv->r){
-								contem = true;
-								break;
-							}
-						}
-						if (contem){
-							printf("Erro na rota %d, carona duplicada\n", q);
-							return false;
-						}
-						else{
-							rqts[index++] = srv->r;
-						}
-					}
-
-				}
-			}
-		}
+		if(!verifica_individuo(offspring))
+			return false;
 	}
 	return true;
 }

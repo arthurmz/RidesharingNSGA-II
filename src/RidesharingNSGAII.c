@@ -21,6 +21,7 @@
 void initialize_mem(Graph * g);
 void setup_matchable_riders(Graph * g);
 void print_qtd_matches_minima(Graph * g);
+void evaluate_bounds(Population *pop);
 
 /*Parametros: nome do arquivo
  *
@@ -72,6 +73,7 @@ int main(int argc,  char** argv){
 	
 	Population * parents = generate_random_population(POPULATION_SIZE, g, true);
 	Population * children = generate_random_population(POPULATION_SIZE, g, true);
+	evaluate_bounds(parents);
 	evaluate_objective_functions_pop(parents, g);
 
 	int i = 0;
@@ -84,9 +86,11 @@ int main(int argc,  char** argv){
 		//Aloca os melhores entre os pais e filhos (que foram parar em frontsList) e joga em pais
 		//O restante irá para os filhos, que de qualquer forma será sobreescrito pelo crossover.
 		select_parents_by_rank(frontsList, parents, children, g);
+		
 		crossover_and_mutation(parents, children, g, crossoverProbability, mutationProbability);
-		if (PRINT_ALL_GENERATIONS)
+		if (PRINT_ALL_GENERATIONS){
 			print(children);
+		}
 		i++;
 	}
 	
@@ -102,7 +106,7 @@ int main(int argc,  char** argv){
 	printf("Imprimindo o ultimo front obtido:\n");
 	sort_by_objective(frontsList->list[0], RIDERS_UNMATCHED);
 	print(frontsList->list[0]);
-	printf("Número de riders combinados: %f\n", g->riders - frontsList->list[0]->list[0]->objetivos[3]);
+	printf("Número de riders combinados: %f\n", g->riders - frontsList->list[0]->list[0]->objetivos_bruto[3]);
     printf("Tempo decorrido: %f segundos\n", (double)(toc - tic) / CLOCKS_PER_SEC);
     printf("Seed: %u\n", seed);
 
@@ -115,7 +119,6 @@ int main(int argc,  char** argv){
 	dealoc_full_population(parents);
 	dealoc_full_population(children);
 	dealoc_empty_population(big_population);
-	//dealoc_fronts(frontsList); :(
 	//dealoc_graph(g);
 	return EXIT_SUCCESS;
 }
@@ -129,10 +132,14 @@ void initialize_mem(Graph * g){
 	index_array_drivers_transfer_rider = malloc(g->drivers * sizeof(int));
 	index_array_drivers_mutation = malloc(g->drivers * sizeof(int));
 	index_array_caronas_inserir = malloc((g->riders + 2) * sizeof(int));
-	fill_array(index_array_drivers, g->drivers);
-	fill_array(index_array_drivers_transfer_rider, g->drivers);
-	fill_array(index_array_drivers_mutation, g->drivers);
-	fill_array(index_array_caronas_inserir, g->riders + 2);
+	index_array_posicao_inicial = malloc((g->riders + 2) * sizeof(int));
+	index_array_offset = malloc((g->riders + 2) * sizeof(int));
+	fill(index_array_drivers,0, g->drivers);
+	fill(index_array_drivers_transfer_rider,0, g->drivers);
+	fill(index_array_drivers_mutation,0, g->drivers);
+	fill(index_array_caronas_inserir,0, g->riders + 2);
+	fill(index_array_posicao_inicial,0, g->riders + 2);
+	fill(index_array_offset,0, g->riders + 2);
 }
 
 void setup_matchable_riders(Graph * g){
@@ -147,7 +154,7 @@ void setup_matchable_riders(Graph * g){
 
 		for (int j = g->drivers; j < g->total_requests; j++){
 			Request * carona = &g->request_list[j];
-			if (insere_carona_rota(rota, carona, 1, 1, false) ){
+			if (insere_carona_rota(rota, carona, 1, 1, false)){
 				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
 				carona->matchable_riders_list[carona->matchable_riders++] = motoristaGrafo;
 			}
@@ -155,6 +162,46 @@ void setup_matchable_riders(Graph * g){
 	}
 	//Ordenando o array de indices das rotas (por matchable_riders)
 	//qsort(index_array_rotas, g->drivers, sizeof(Request*), compare_rotas );
+}
+
+
+/*
+ * Avalia os limites superiores e inferiores de:
+ * TOTAL_DISTANCE_VEHICLE_TRIP
+ * TOTAL_TIME_VEHICLE_TRIPS
+ * TOTAL_TIME_RIDER_TRIPS
+ * RIDERS_UNMATCHED
+ *
+ * Pop: Deve ser uma população sem caronas formadas
+ */
+void evaluate_bounds(Population * pop){
+	Individuo * idv = pop->list[0];
+	for (int i = 0; i < idv->size; i++){
+		 Service *origem = &idv->cromossomo[i].list[0];
+		 Service *destino = &idv->cromossomo[i].list[1];
+		 double haversineTemp = haversine(origem, destino);
+		 TOTAL_DISTANCE_VEHICLE_TRIP_UPPER_BOUND += AD + (BD * haversineTemp);
+		 TOTAL_DISTANCE_VEHICLE_TRIP_LOWER_BOUND += haversineTemp;
+
+		 double tempoMinimo = minimal_time_between_services(origem, destino);
+		 TOTAL_TIME_VEHICLE_TRIPS_UPPER_BOUND += ceil(AT + (BT * tempoMinimo));
+		 TOTAL_TIME_VEHICLE_TRIPS_LOWER_BOUND += tempoMinimo;
+	}
+
+	for (int i = g->drivers; i < g->riders; i++){
+		Service x, y;
+		x.is_source = true;
+		x.offset = 1;
+		x.r = &g->request_list[i];
+		y.is_source = false;
+		y.offset = 0;
+		y.r = &g->request_list[i];
+		TOTAL_TIME_RIDER_TRIPS_UPPER_BOUND += ceil(AT + (BT * minimal_time_between_services(&x, &y)));
+	}
+
+	TOTAL_TIME_RIDER_TRIPS_LOWER_BOUND = 0;
+	RIDERS_UNMATCHED_UPPER_BOUND = g->riders;
+	RIDERS_UNMATCHED_LOWER_BOUND = 0;
 }
 
 

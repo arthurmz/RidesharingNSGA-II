@@ -15,8 +15,8 @@
 
 /** Rota usada para a cópia em operações de mutação etc.*/
 Rota *ROTA_CLONE;
-Rota *ROTA_CLONE1;//Outros clones para não conflitar as cópias
-Rota *ROTA_CLONE2;
+Rota *ROTA_CLONE_SWAP;//Outros clones para não conflitar as cópias
+Rota *ROTA_CLONE_REMOVE_INSERT;//usado só no op de remove-insert
 Rota *ROTA_CLONE_PUSH;
 
 /** Aloca a ROTA_CLONE global */
@@ -25,11 +25,11 @@ void malloc_rota_clone(){
 	ROTA_CLONE = (Rota*) calloc(1, sizeof(Rota));
 	ROTA_CLONE->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 
-	ROTA_CLONE1 = (Rota*) calloc(1, sizeof(Rota));
-	ROTA_CLONE1->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+	ROTA_CLONE_SWAP = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE_SWAP->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 
-	ROTA_CLONE2 = (Rota*) calloc(1, sizeof(Rota));
-	ROTA_CLONE2->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
+	ROTA_CLONE_REMOVE_INSERT = (Rota*) calloc(1, sizeof(Rota));
+	ROTA_CLONE_REMOVE_INSERT->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
 
 	ROTA_CLONE_PUSH = (Rota*) calloc(1, sizeof(Rota));
 	ROTA_CLONE_PUSH->list = calloc(MAX_SERVICES_MALLOC_ROUTE, sizeof(Service));
@@ -39,29 +39,16 @@ void malloc_rota_clone(){
  * Insere caronas aleatórias para todas as caronas da rota
  * IMPORTANTE: Antes de chamar, todos os caronas já feito match devem estar no grafo
  */
-void insere_carona_aleatoria_individuo(Individuo * ind){
+void insere_carona_aleatoria_individuo(Individuo * ind, bool full_search){
 	shuffle(index_array_drivers,g->drivers);
 	for (int i = 0; i < ind->size; i++){
 		int j = index_array_drivers[i];
-		insere_carona_aleatoria_rota(&ind->cromossomo[j]);
+		insere_carona_aleatoria_rota(&ind->cromossomo[j], full_search);
 	}
 }
 
-/*
-void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset, bool is_source){
-
-	int ultimaPos = rota->length-1;
-	//Empurra todo mundo depois da posição de inserção
-	for (int i = ultimaPos; i >= posicao_insercao; i--){
-		rota->list[i+1] = rota->list[i];
-	}
-
-	//Insere o conteúdo do novo carona
-	rota->list[posicao_insercao].r = carona;
-	rota->list[posicao_insercao].is_source = is_source;
-	rota->length++;
-}*/
-
+//Insere a carona na rota e empura os tempos de pickup e delivery.
+//Completa a inserção mesmo se a rota ficar inválida
 void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset, bool is_source){
 	Service * ant = NULL;
 	Service * atual = NULL;
@@ -85,25 +72,21 @@ void insere_carona(Rota *rota, Request *carona, int posicao_insercao, int offset
 
 	nextTime = calculate_service_time(next, atual);
 	PF = nextTime - next->service_time;
+	rota->length++;//Deve aumentar o tamanho antes de fazer o PF
 	if (PF > 0) {
-		next->service_time+= PF;
-		if (posicao_insercao+2 < rota->length)
-			push_forward(rota, posicao_insercao+2, PF, true);
+		push_forward_hard(rota, posicao_insercao+1, PF);
 	}
-	rota->length++;
 }
 
 bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int offset, bool inserir_de_fato){
-	if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
-		printf("Parâmetros inválidos\n");
-		return false;
-	}
+	//if (posicao_insercao <= 0 || posicao_insercao >= rota->length || offset <= 0 || posicao_insercao + offset > rota->length) {
+	//	printf("Parâmetros inválidos\n");
+	//	return false;
+	//}
 
 	clone_rota(rota, &ROTA_CLONE);
 	bool isRotaValida = false;
 	insere_carona(ROTA_CLONE, carona, posicao_insercao, offset, true);
-	if (!is_rota_parcialmente_valida(ROTA_CLONE))
-		return false;
 	insere_carona(ROTA_CLONE, carona, posicao_insercao+offset, 0, false);
 
 	isRotaValida = is_rota_valida(ROTA_CLONE);
@@ -122,32 +105,66 @@ bool insere_carona_rota(Rota *rota, Request *carona, int posicao_insercao, int o
 
 /*Insere uma quantidade variável de caronas na rota informada
  * Utilizado na geração da população inicial, e na reparação dos indivíduos quebrados
- * IMPORTANTE: Antes de chamar, os caronas devem estar determinados.*/
-void insere_carona_aleatoria_rota(Rota* rota){
+ * IMPORTANTE: Antes de chamar, os caronas devem estar determinados.
+ * full_search: não para de tentar inserir depois de conseguir o primeiro match*/
+bool insere_carona_aleatoria_rota(Rota* rota, bool full_search){
 	Request * request = &g->request_list[rota->id];
-
 	int qtd_caronas_inserir = request->matchable_riders;
-	if (qtd_caronas_inserir == 0) return;
-	/*Configurando o index_array usado na aleatorização
-	 * da ordem de leitura dos caronas
-	 * Precisa fazer por causa do tamanho variável*/
-	for (int l = 0; l < qtd_caronas_inserir; l++){
-		index_array_caronas_inserir[l] = l;
-	}
+	if (qtd_caronas_inserir == 0 || qtd_caronas_combinados(rota) == qtd_caronas_inserir) return false;
 	
-	shuffle(index_array_caronas_inserir, qtd_caronas_inserir);
+	fill_shuffle(index_array_caronas_inserir, 0, qtd_caronas_inserir);
 
-	for (int z = 0; z < qtd_caronas_inserir; z++){
-		int p = index_array_caronas_inserir[z];
-		Request * carona = request->matchable_riders_list[p];
-		if (!carona->matched){
-			int posicao_inicial = get_random_int(1, rota->length-1);
-			for (int offset = 1; offset <= rota->length - posicao_inicial; offset++){
-				bool inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
-				if(inseriu) return;
+	if (full_search){
+		bool ook = false;
+		for (int z = 0; z < qtd_caronas_inserir; z++){
+			int p = index_array_caronas_inserir[z];
+			Request * carona = request->matchable_riders_list[p];
+			if (!carona->matched){
+				if (qtd_caronas_combinados(rota) == qtd_caronas_inserir)
+					return false;
+				bool inseriu = false;
+				//fill_shuffle(index_array_posicao_inicial,1, rota->length-1);
+				for (int posicao_inicial = 1; posicao_inicial < rota->length; posicao_inicial++){
+					//int posicao_inicial = index_array_posicao_inicial[pi-1];
+					//fill_shuffle(index_array_offset, 1, rota->length - posicao_inicial);
+					for (int offset = 1; offset <= rota->length - posicao_inicial; offset++){
+						//int offset = index_array_offset[ot-1];
+						inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+						if(inseriu) {
+							ook = true;
+							break;
+						}
+					}
+					if(inseriu) {
+						break;
+					}
+				}
+			}
+		}
+		return ook;
+	}
+	else{
+		for (int z = 0; z < qtd_caronas_inserir; z++){
+			int p = index_array_caronas_inserir[z];
+			Request * carona = request->matchable_riders_list[p];
+			if (!carona->matched){
+				if (qtd_caronas_combinados(rota) == qtd_caronas_inserir)
+					return false;
+				bool inseriu = false;
+				fill_shuffle(index_array_posicao_inicial,1, rota->length-1);
+				for (int pi = 1; pi < rota->length; pi++){
+					int posicao_inicial = index_array_posicao_inicial[pi-1];
+					fill_shuffle(index_array_offset, 1, rota->length - posicao_inicial);
+					for (int ot = 1; ot <= rota->length - posicao_inicial; ot++){
+						int offset = index_array_offset[ot-1];
+						inseriu = insere_carona_rota(rota, carona, posicao_inicial, offset, true);
+						if(inseriu) return true;
+					}
+				}
 			}
 		}
 	}
+	return false;
 }
 
 
@@ -223,11 +240,15 @@ void evaluate_objective_functions(Individuo *idv, Graph *g){
 		}
 	}
 
-	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
-	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
-	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = rider_time;
-	idv->objetivos[RIDERS_UNMATCHED] = riders_unmatched;
+	idv->objetivos_bruto[TOTAL_DISTANCE_VEHICLE_TRIP] = distance;
+	idv->objetivos_bruto[TOTAL_TIME_VEHICLE_TRIPS] = vehicle_time;
+	idv->objetivos_bruto[TOTAL_TIME_RIDER_TRIPS] = rider_time;
+	idv->objetivos_bruto[RIDERS_UNMATCHED] = riders_unmatched;
 
+	idv->objetivos[TOTAL_DISTANCE_VEHICLE_TRIP] = (distance - TOTAL_DISTANCE_VEHICLE_TRIP_LOWER_BOUND)  / (TOTAL_DISTANCE_VEHICLE_TRIP_UPPER_BOUND - TOTAL_DISTANCE_VEHICLE_TRIP_LOWER_BOUND);
+	idv->objetivos[TOTAL_TIME_VEHICLE_TRIPS] = (vehicle_time - TOTAL_TIME_VEHICLE_TRIPS_LOWER_BOUND) / (TOTAL_TIME_VEHICLE_TRIPS_UPPER_BOUND - TOTAL_TIME_VEHICLE_TRIPS_LOWER_BOUND);
+	idv->objetivos[TOTAL_TIME_RIDER_TRIPS] = (rider_time - TOTAL_TIME_RIDER_TRIPS_LOWER_BOUND) / (TOTAL_TIME_RIDER_TRIPS_UPPER_BOUND - TOTAL_TIME_RIDER_TRIPS_LOWER_BOUND);
+	idv->objetivos[RIDERS_UNMATCHED] = (riders_unmatched - RIDERS_UNMATCHED_LOWER_BOUND) / (RIDERS_UNMATCHED_UPPER_BOUND - RIDERS_UNMATCHED_LOWER_BOUND);
 }
 
 
@@ -270,6 +291,41 @@ int compare_rotas(const void *p, const void *q){
 	return ret;
 }
 
+/*Empurra os tempos de pickup e delivery de forma fixa. Economizando nos waiting times
+ * A rota pode ficar inválida no final*/
+void push_forward_hard(Rota *rota, int position, double pushf){
+	Service * atual = &rota->list[position];
+	if (pushf <= 0) return;
+	atual->service_time+= pushf;
+
+	for (int i = position+1; i < rota->length; i++){
+		if (pushf <= 0)
+			break;
+		atual = &rota->list[i];
+		Service * ant = &rota->list[i-1];
+
+		double waiting_time = atual->service_time - ant->service_time -  minimal_time_between_services(ant, atual);
+		waiting_time = fmax(0, waiting_time);
+		pushf = fmax(0, pushf - waiting_time);
+
+		atual->service_time+= pushf;
+	}
+}
+
+void push_forward_mutation_op(Rota * rota){
+	clone_rota(rota, &ROTA_CLONE_PUSH);
+	int position = get_random_int(0, ROTA_CLONE_PUSH->length-1);
+	Service * atual = &ROTA_CLONE_PUSH->list[position];
+	double maxPushf = get_latest_time_service(atual) -  atual->service_time;
+	double pushf = maxPushf * ((double)rand() / RAND_MAX);
+
+	push_forward_hard(ROTA_CLONE_PUSH, position, pushf);
+
+	bool rotaValida = is_rota_valida(ROTA_CLONE_PUSH);
+	if (rotaValida){
+		clone_rota(ROTA_CLONE_PUSH, &rota);
+	}
+}
 
 /*Tenta empurar os services uma certa quantidade de tempo
  * retorna true se conseguiu fazer algum push forward
@@ -284,8 +340,7 @@ bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone){
 	double maxPushf = get_latest_time_service(atual) -  atual->service_time;
 
 	if (pushf == -1){
-		//pushf = maxPushf * ((double)rand() / RAND_MAX);
-		pushf = maxPushf;
+		pushf = maxPushf * ((double)rand() / RAND_MAX);
 	}
 	else{
 		pushf = fmin (pushf, maxPushf);
@@ -316,6 +371,64 @@ bool push_forward(Rota * rota, int position, double pushf, bool forcar_clone){
 	return rotaValida;
 }
 
+/*Puxa os services uma certa quantidade de tempo
+ * "Soft" porque se em algum passo não puder fazer o pushb todo, faz o resto que dá pra fazer
+ * e continua até o fim. embora a rota final ainda possa ser inválida.
+ */
+void push_backward_soft(Rota *rota, int position, double pushb){
+	//bool rotaValidaAntes = is_rota_valida(rota);
+	Service * atual = &rota->list[position];
+	//double maisCedoPossivel = get_earliest_time_service(atual);
+	//if (position > 0){
+	//	Service * ant = &rota->list[position-1];
+	//	double srvTime = calculate_service_time(atual, ant);
+	//	if (srvTime > maisCedoPossivel)
+	//		maisCedoPossivel = srvTime;
+	//}
+
+	//double maxPushb = atual->service_time - maisCedoPossivel;
+	//pushb = fmin (pushb, maxPushb);
+
+	if (pushb <= 0) return;
+
+	atual->service_time-= pushb;
+
+	for (int i = position+1; i < rota->length; i++){
+		if (pushb == 0)
+			break;
+		atual = &rota->list[i];
+		double at = get_earliest_time_service(atual);
+
+		pushb = fmin(pushb, atual->service_time - at);
+
+		atual->service_time-= pushb;
+	}
+}
+
+/*pode falhar, por isso faz clone*/
+void push_backward_mutation_op(Rota * rota, int position){
+	if (position == -1)
+		position = get_random_int(0, rota->length-1);
+	Service * atual = &rota->list[position];
+	double maisCedoPossivel = get_earliest_time_service(atual);
+	if (position > 0){
+		Service * ant = &rota->list[position-1];
+		double srvTime = calculate_service_time(atual, ant);
+		if (srvTime > maisCedoPossivel)
+			maisCedoPossivel = srvTime;
+	}
+	double maxPushb = atual->service_time - maisCedoPossivel;
+	if (maxPushb == 0) return;
+	double pushb = maxPushb * ((double)rand() / RAND_MAX);
+
+	clone_rota(rota, &ROTA_CLONE_PUSH);
+	push_backward_soft(ROTA_CLONE_PUSH, position, pushb);
+	bool rotaValida = is_rota_valida(ROTA_CLONE_PUSH);
+	if (rotaValida){
+		clone_rota(ROTA_CLONE_PUSH, &rota);
+	}
+}
+
 /*Tenta puxar os services uma certa quantidade de tempo
  * Se position = -1, gera aleatoriamente a posição*/
 bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone){
@@ -337,8 +450,7 @@ bool push_backward(Rota * rota, int position, double pushb, bool forcar_clone){
 	double maxPushb = atual->service_time - maisCedoPossivel;
 
 	if (pushb == -1){
-		//pushb = maxPushb * ((double)rand() / RAND_MAX);
-		pushb = maxPushb;
+		pushb = maxPushb * ((double)rand() / RAND_MAX);
 	}
 	else{
 		pushb = fmin (pushb, maxPushb);
@@ -401,16 +513,18 @@ bool transfer_rider(Rota * rotaRemover, Individuo *ind, Graph * g){
 		rotaInserir = &ind->cromossomo[caronaInserir->matchable_riders_list[k]->id];
 	}
 
-	//Só permite realizar o transfer se a rota de destinos tiver menos matchs POSSÍVEIS
-	//A idéia é que as caronas sejam movidas para as rotas mais limitadas.
-	/*if (rotaInserir->list[0].r->matchable_riders >= rotaRemover->list[0].r->matchable_riders)
-		return false;*/
-
 	bool conseguiu = false;
-	int posicaoInserir = get_random_int(1, rotaInserir->length-1);
 	//Invalida o carona
 	caronaInserir->matched = false;
-	conseguiu = insere_carona_rota(rotaInserir, caronaInserir, posicaoInserir, 1, true);//TODO variar o offset
+
+	for (int posicaoInserir = 1; posicaoInserir < rotaInserir->length; posicaoInserir++){
+		for (int offset = 1; offset <= rotaInserir->length - posicaoInserir; offset++){
+			conseguiu = insere_carona_rota(rotaInserir, caronaInserir, posicaoInserir, offset, true);
+			if(conseguiu) break;
+		}
+		if(conseguiu) break;
+	}
+
 	//Se conseguiu inserir, remove o carona do rotaRemover
 	if (conseguiu)
 		desfaz_insercao_carona_rota(rotaRemover,pos);
@@ -446,71 +560,82 @@ bool transfer_rider(Rota * rotaRemover, Individuo *ind, Graph * g){
 bool remove_insert(Rota * rota){
 	//Criando um clone local(como backup!!)
 
-	clone_rota(rota, &ROTA_CLONE1);
-	if (ROTA_CLONE1->length < 4) return false;
-	int positionSources[(ROTA_CLONE1->length-2)/2];
+	clone_rota(rota, &ROTA_CLONE_REMOVE_INSERT);
+	if (ROTA_CLONE_REMOVE_INSERT->length < 4) return false;
+	int positionSources[(ROTA_CLONE_REMOVE_INSERT->length-2)/2];
 	//Procurando as posições dos sources
 	int k = 0;
-	for (int i = 1; i < ROTA_CLONE1->length-2; i++){
-		if (ROTA_CLONE1->list[i].is_source)
+	for (int i = 1; i < ROTA_CLONE_REMOVE_INSERT->length-2; i++){
+		if (ROTA_CLONE_REMOVE_INSERT->list[i].is_source)
 			positionSources[k++] = i;
 	}
-	int position = positionSources[rand() % (ROTA_CLONE1->length-2)/2];//não serve simplesmente o get_random_carona_position?
-	Request * carona = ROTA_CLONE1->list[position].r;
-	int offset = desfaz_insercao_carona_rota(ROTA_CLONE1, position);
+	int position = positionSources[rand() % (ROTA_CLONE_REMOVE_INSERT->length-2)/2];
+	Request * carona = ROTA_CLONE_REMOVE_INSERT->list[position].r;
+	int offset = desfaz_insercao_carona_rota(ROTA_CLONE_REMOVE_INSERT, position);//Desfaz a inserção mas o carona continua marcado, para evitar recolocar.
 
 	//Calculando o push backward máximo
-	double horaMaisCedo = calculate_service_time(&ROTA_CLONE1->list[position], &ROTA_CLONE1->list[position-1]);
-	double PF = ROTA_CLONE1->list[position].service_time - horaMaisCedo;
-	push_backward(ROTA_CLONE1, position,PF, true);
-	if (position+offset < ROTA_CLONE1->length){
-		//Calculando o push backward máximo
-		double horaMaisCedoOffset = calculate_service_time(&ROTA_CLONE1->list[position+offset], &ROTA_CLONE1->list[position+offset-1]);
-		double PFOffset = ROTA_CLONE1->list[position+offset].service_time - horaMaisCedoOffset;
-		push_backward(ROTA_CLONE1, position+offset, PFOffset, true);
-	}
-	
-	
-	
-	//update_times(ROTA_CLONE1);//Nâo vai falhar, já que é remoção
+	//double horaMaisCedo = calculate_service_time(&ROTA_CLONE_REMOVE_INSERT->list[position], &ROTA_CLONE_REMOVE_INSERT->list[position-1]);
+	//double PB = ROTA_CLONE_REMOVE_INSERT->list[position].service_time - horaMaisCedo;
+	//if (PB > 0){
+	//}
 
-	carona->matched = false;
-	insere_carona_aleatoria_rota(ROTA_CLONE1);
-	if (is_rota_valida(ROTA_CLONE1)){
-		clone_rota(ROTA_CLONE1, &rota);
+	//O push backward pode falhar, por isso a preferência é tentar um aleatório.
+	push_backward_mutation_op(ROTA_CLONE_REMOVE_INSERT, position);
+
+	if (offset > 1 && position+offset < ROTA_CLONE_REMOVE_INSERT->length-1){
+		//Calculando o push backward máximo
+		//double horaMaisCedoOffset = calculate_service_time(&ROTA_CLONE_REMOVE_INSERT->list[position+offset], &ROTA_CLONE_REMOVE_INSERT->list[position+offset-1]);
+		//double PBOffset = ROTA_CLONE_REMOVE_INSERT->list[position+offset].service_time - horaMaisCedoOffset;
+		//if (PBOffset > 0){
+			//push_backward_soft(ROTA_CLONE_REMOVE_INSERT, position+offset, PBOffset);
+		//}
+
+		push_backward_mutation_op(ROTA_CLONE_REMOVE_INSERT, position+offset);
+	}
+
+	bool ok = insere_carona_aleatoria_rota(ROTA_CLONE_REMOVE_INSERT, false);
+	if (is_rota_valida(ROTA_CLONE_REMOVE_INSERT) && ok){
+		clone_rota(ROTA_CLONE_REMOVE_INSERT, &rota);
+		carona->matched = false;
 		return true;
 	}
 	else{
-		carona->matched = true;
+		carona->matched = true;//POR QUE NUNCA ENTRA AQUI???????????
 	}
 	return false;
 }
 
-
+/*Escolhe um ponto aleatório e então troca o service de posição com o próximo */
 bool swap_rider(Rota * rota){
 	if (rota->length < 6) return false;
-	clone_rota(rota, &ROTA_CLONE1);
-	int ponto_swap = get_random_int(1, ROTA_CLONE1->length-4);
-	Service service_temp = ROTA_CLONE1->list[ponto_swap];
-	ROTA_CLONE->list[ponto_swap] = ROTA_CLONE1->list[ponto_swap+1];
-	ROTA_CLONE->list[ponto_swap+1] = service_temp;
+	clone_rota(rota, &ROTA_CLONE_SWAP);
+	int ponto_swap = get_random_int(1, ROTA_CLONE_SWAP->length-3);
+	Service service_temp = ROTA_CLONE_SWAP->list[ponto_swap];
+	ROTA_CLONE_SWAP->list[ponto_swap] = ROTA_CLONE_SWAP->list[ponto_swap+1];
+	ROTA_CLONE_SWAP->list[ponto_swap+1] = service_temp;
 
-	Service *ant = &ROTA_CLONE1->list[ponto_swap-1];
-	Service *atual = &ROTA_CLONE1->list[ponto_swap];
-	Service *next = &ROTA_CLONE1->list[ponto_swap+1];
+	Service *ant = &ROTA_CLONE_SWAP->list[ponto_swap-1];
+	Service *atual = &ROTA_CLONE_SWAP->list[ponto_swap];
+	Service *next = &ROTA_CLONE_SWAP->list[ponto_swap+1];
+
+	if (atual->r == next->r)
+		return false;
 
 	atual->service_time = calculate_service_time(atual, ant);
 	double nextTime = calculate_service_time(next, atual);
 
 	double PF = nextTime - next->service_time;
 
-	bool ordemValida = is_ordem_respeitada(ROTA_CLONE1);
-	if (!ordemValida) return false;
+	/*bool ordemValida = is_ordem_respeitada(ROTA_CLONE_SWAP);
+	if (!ordemValida) {
+		printf("muito improvável\n");
+		return false;
+	}*/
 
-	push_forward(ROTA_CLONE1, ponto_swap+1, PF, true);
+	push_forward_hard(ROTA_CLONE_SWAP, ponto_swap+1, PF);
 
-	if(is_rota_valida(ROTA_CLONE1)){
-		clone_rota(ROTA_CLONE1, &rota);
+	if(is_rota_valida(ROTA_CLONE_SWAP)){
+		clone_rota(ROTA_CLONE_SWAP, &rota);
 		return true;
 	}
 	return false;
@@ -542,39 +667,43 @@ void repair(Individuo *offspring, Graph *g){
 	}
 }
 
-
 void mutation(Individuo *ind, Graph *g, double mutationProbability){
 	repair(ind, g);
-	shuffle(index_array_drivers_mutation, g->drivers);
+	//shuffle(index_array_drivers_mutation, g->drivers);
 
 	for (int r = 0; r < ind->size; r++){
 		double accept = (double)rand() / RAND_MAX;
 		if (accept < mutationProbability){
-			int k = index_array_drivers_mutation[r];
-			Rota * rota  = &ind->cromossomo[k];
+			//int k = index_array_drivers_mutation[r];
+			Rota * rota  = &ind->cromossomo[r];
 
-			int op = rand() % 4;
+			int op = rand() % 5;
 			switch(op){
 				case (0):{
-					push_backward(rota, -1, -1, false);
-					break;
-				}
-				case (1):{
 					remove_insert(rota);
 					break;
 				}
-				case (2):{
+				case (1):{
 					transfer_rider(rota,ind, g);
 					break;
 				}
-				case (3):{
+				case (2):{
 					swap_rider(rota);
+					break;
+				}
+				case (3):{
+					push_backward_mutation_op(rota,-1);
+					break;
+				}
+				case (4):{
+					push_forward_mutation_op(rota);
 					break;
 				}
 			}
 		}
 	}
 }
+
 
 
 void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, Individuo *offspring2, Graph *g, double crossoverProbability){
@@ -593,9 +722,9 @@ void crossover(Individuo * parent1, Individuo *parent2, Individuo *offspring1, I
 		copy_rota(parent2, offspring2, crossoverPoint, rotaSize);
 
 		repair(offspring1, g);
-		insere_carona_aleatoria_individuo(offspring1);
+		insere_carona_aleatoria_individuo(offspring1, false);
 		repair(offspring2, g);
-		insere_carona_aleatoria_individuo(offspring2);
+		insere_carona_aleatoria_individuo(offspring2, false);
 	}
 	else{
 		copy_rota(parent1, offspring1, 0, rotaSize);
@@ -919,95 +1048,16 @@ void merge(Population *p1, Population *p2, Population *big_population){
 
 
 
-/*
- *Atualiza os tempos de inserção e delivery da rota, ao mesmo tempo em que
- * se identificar uma situação onde não dá pra inserir, retorna false.
- *
- *O algoritmo inicia colocando o servicetime do delivery do motorista como o mais cedo
- *percorre a rota do fim pro início, setando o servicetime 'st_i'
- *st_i = st_i+1 - tempo(i, i+1);
- *se st_i < earliest_time
- *	push_forward(i+1);
- *se st_i > latest_time
- *	st_i = latest_time;
- *
- *
- *O efeito disso é que sempre que um carona puder ser adicionado, ele será.
- *(diferentemente do original, cujo source do motorista não é movido pra frente).
- *
- *Faz isso pra todo mundo, depois minimiza o tempo de espera.
- *
- *Update: Considerar que se uma rota é temporariamente válida
- *ao inserir a origem e destino. ela também vai ser válida ao inserir
- *apenas a origem!
- * */
-bool update_times(Rota *rota){
-	Service * motoristaDelivery = &rota->list[rota->length-1];
 
-	motoristaDelivery->service_time = motoristaDelivery->r->delivery_earliest_time;
 
-	/**
-	 * Calcula o service_time de i =
-	 * service_time_i = service_time_i+1 - tempo(i, i+1)
-	 *
-	 * se o service_time_i < at então service_time_i = at;
-	 * Isso acarreta que agora o service_time_i+1 precisa ser empurrado.
-	 *
-	 * Se o service_time_i > bt, service_time_i = bt, e agora
-	 * service_time_i+1 ganha um waiting_time;
-	 */
-	for (int i = rota->length-2; i >= 0; i--){
-		Service *atual = &rota->list[i];
-		Service *prox = &rota->list[i+1];
-		double at = get_earliest_time_service(atual);
-		double bt = get_latest_time_service(atual);
 
-		double tbs = minimal_time_between_services(atual, prox);
 
-		atual->service_time = prox->service_time - tbs;
 
-		if (atual->service_time > bt){
-			atual->service_time = bt;
-		}
-		else if (atual->service_time < at){
-			double pf = at - atual->service_time;
-			atual->service_time = at;
-			bool conseguiu = push_forward(rota, i+1, pf, false);
-			if (!conseguiu)
-				return false;
-		}
-	}
 
-	//TODO minimizar O WAITING time.
-	return true;
-}
 
-/*
- * Atualiza os tempos de inserção, minimizando os tempos de espera
- * aumentando as chances da rota ser válida.
- *
- * o waiting_time é minimizado fazendo um push_foward dos elementos que
- * estão ANTES do ponto onde há waiting_time;
- *
- * idéia:
- * percorre sequencialmente enquanto não acha um waiting_time >0
- * > vai atualizando o máximo de push_foward no ponto anterior
- * > quando achar waiting time > 0
- * >> faz service_time = max do push forward possível.
- *
- * Ex:
- *
- * A+ 1+ 1- 3+ 3- 2+ 2+ A-
- *
- * Depois de inserir o 3+ no earliest time
- *
- */
-void minimize_waiting_time(Rota * rota){
-	for (int i = 0; i < rota->length-1; i++){
-		Service *ant = &rota->list[i];
-		Service *actual = &rota->list[i+1];
-		actual->service_time = calculate_service_time(actual, ant);
-	}
-}
+
+
+
+
 
 
