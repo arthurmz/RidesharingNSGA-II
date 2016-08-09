@@ -144,26 +144,25 @@ void initialize_mem(Graph * g){
 
 void setup_matchable_riders(Graph * g){
 	Individuo * individuoTeste = generate_random_individuo(g, false);
-	/*for (int i = 0; i < g->drivers; i++){
+	for (int i = 0; i < g->drivers; i++){
 		index_array_rotas[i] = &g->request_list[i];
-	}*/
-
+	}
+	int dummy = 0;//Apenas por segurança, não usar
 	for (int i = 0; i < g->drivers; i++){
 		Request * motoristaGrafo = individuoTeste->cromossomo[i].list[0].r;
 		Rota * rota = &individuoTeste->cromossomo[i];
 
 		for (int j = g->drivers; j < g->total_requests; j++){
 			Request * carona = &g->request_list[j];
-			if (insere_carona_rota(rota, carona, 1, 1, false)){
+			if (insere_carona_rota(rota, carona, 1, 1, false, &dummy)){
 				motoristaGrafo->matchable_riders_list[motoristaGrafo->matchable_riders++] = carona;
 				carona->matchable_riders_list[carona->matchable_riders++] = motoristaGrafo;
 			}
 		}
 	}
 	//Ordenando o array de indices das rotas (por matchable_riders)
-	//qsort(index_array_rotas, g->drivers, sizeof(Request*), compare_rotas );
+	qsort(index_array_rotas, g->drivers, sizeof(Request*), compare_rotas );
 }
-
 
 /*
  * Avalia os limites superiores e inferiores de:
@@ -206,7 +205,9 @@ void evaluate_bounds(Population * pop){
 
 
 void print_qtd_matches_minima(Graph * g){
-	FILE *fp=fopen("qtd_matches_minima.txt", "w");
+	char buf[123];
+	sprintf(buf, "qtd_minima_matches_%d.txt", g->total_requests);
+	FILE *fp=fopen(buf, "w");
 	/*Imprimindo quantos caronas cada motorista consegue fazer match*/
 	int qtd = 0;
 	int motor_array[g->drivers];

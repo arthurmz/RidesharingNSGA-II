@@ -23,9 +23,9 @@ inline double round_2_decimal(double n){
 }
 
 //True se a <= b, com diferença < epsilon
-bool leq(double a, double b){
-	return a <= b || (a - b) < EPSILON;
-}
+//bool leq(double a, double b){
+//	return a <= b || (a - b) < EPSILON;
+//}
 
 /**Retorna um número inteiro entre minimum_number e maximum_number, inclusive */
 int get_random_int(int minimum_number, int max_number){
@@ -146,6 +146,24 @@ double minimal_time_between_services(Service *a, Service *b){
 	return distance / VEHICLE_SPEED * 60;
 }
 
+/*Diferença entre o service time e seu latest time*/
+double rem(Service *a){
+	double x, y;
+	if(a->is_source)
+		x = a->r->pickup_latest_time;
+	else
+		x = a->r->delivery_latest_time;
+
+	return x - a->service_time;
+}
+
+/*Calcula o tempo de espera entre dois services CONSECUTIVOS na rota.*/
+double waiting_time_services(Service *sv1, Service *sv2){
+	double tempo_gasto = sv2->service_time - sv1->service_time;
+	double mtbs = minimal_time_between_services(sv1,sv2);
+	return fmax(0, tempo_gasto - mtbs);
+}
+
 /*Calcula o tempo gasto para ir do ponto i ao ponto j, através de cada
  * request da rota.
  * Os tempos deve estar configurados corretamente nos services*/
@@ -156,18 +174,13 @@ double tempo_gasto_rota(Rota *rota, int i, int j){
 /**Calcula o service_time mais cedo possível para actual. Baseado
  * no service_time de ant */
 double calculate_service_time(Service * actual, Service *ant){
-	double next_time = 0;
-
 	double st;
 	if (ant->is_source)
 		st = ant->r->service_time_at_source;
 	else
 		st = ant->r->service_time_at_delivery;
 
-	double at = get_earliest_time_service(actual);
-
-	next_time = ant->service_time + st + minimal_time_between_services(ant, actual);
-	next_time = fmax(next_time, at);
+	double next_time = ant->service_time + st + minimal_time_between_services(ant, actual);
 
 	return next_time;
 }
@@ -184,6 +197,16 @@ inline double get_latest_time_service(Service * atual){
 	return atual->r->delivery_latest_time;
 }
 
+
+inline TIMEWINDOW * get_time_windows_service(Service * atual){
+	if (atual->is_source){
+		return &atual->r->tw1;
+	}
+	else{
+		return &atual->r->tw2;
+	}
+}
+
 bool is_dentro_janela_tempo_is_tempos_respeitados(Rota * rota){
 
 	for (int i = 0; i < rota->length-1; i++){
@@ -196,8 +219,8 @@ bool is_dentro_janela_tempo_is_tempos_respeitados(Rota * rota){
 			if(destiny->is_source || source->r != destiny->r) continue;
 
 			//Janela de tempo
-			if ( ! ((leq(source->r->pickup_earliest_time, source->service_time) && leq(source->service_time, source->r->pickup_latest_time))
-				&& (leq(destiny->r->delivery_earliest_time, destiny->service_time) && leq(destiny->service_time, destiny->r->delivery_latest_time))))
+			if ( ! (source->r->pickup_earliest_time <= source->service_time && source->service_time <= source->r->pickup_latest_time
+				&& destiny->r->delivery_earliest_time <= destiny->service_time && destiny->service_time <= destiny->r->delivery_latest_time))
 				return false;
 
 			/*Verifica se os tempos de todos os requests nessa rota estão sendo respeitados*/
@@ -255,9 +278,9 @@ bool is_carga_dentro_limite2(Rota *rota){
 bool is_distancia_motorista_respeitada(Rota * rota){
 	Service * source = &rota->list[0];
 	Service * destiny = &rota->list[rota->length-1];
-	double MTD = ceil(AD + (BD * haversine(source, destiny)));//Maximum Travel Distance
+	double MTD = AD + (BD * haversine(source, destiny));//Maximum Travel Distance
 	double accDistance = distancia_percorrida(rota);
-	bool ok = leq(accDistance, MTD);
+	bool ok = accDistance <= MTD;
 	return ok;
 }
 
@@ -267,7 +290,7 @@ bool is_tempo_respeitado(Rota *rota, int i, int j){
 	Service * destiny = &rota->list[j];
 	double MTT = ceil(AT + (BT * minimal_time_between_services(source, destiny)));
 	double accTime = tempo_gasto_rota(rota, i, j);
-	return leq(accTime, MTT) && accTime >= 0;//Não é válido se o tempo acumulado for negativo
+	return accTime <= MTT && accTime >= 0;//Não é válido se o tempo acumulado for negativo
 }
 
 /*Verifica se a ordem de inserção e remoção dos riders é respeitada
